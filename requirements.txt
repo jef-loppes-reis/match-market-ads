@@ -1,0 +1,35 @@
+anyio
+beautifulsoup4
+certifi
+charset-normalizer
+colorama
+db @ git+https://github.com/E-commerce-Pecista/db-connection.git
+ecomm @ git+https://github.com/E-commerce-Pecista/ecomm-tools
+et-xmlfile
+fuzzywuzzy
+h11
+httpcore
+httpx
+idna
+Levenshtein
+ml @ git+https://github.com/E-commerce-Pecista/ml-interface.git
+mysql-connector-python
+numpy
+openpyxl
+pandas
+psycopg
+psycopg-binary
+python-dateutilpost0
+python-dotenv
+python-Levenshtein
+pytz
+rapidfuzz
+requests
+six
+sniffio
+soupsieve
+tqdm
+typing_extensions
+tzdata
+urllib3
+rich
