@@ -3,7 +3,7 @@ from os import system
 from json import dumps
 
 from ecomm import MLInterface
-from httpx import Client, Response, ReadTimeout
+from httpx import Client, ReadTimeout
 from pandas import read_feather, Series
 from tqdm import tqdm
 
@@ -11,8 +11,13 @@ from modules.replace_char_spec import ReplaceCaract
 
 
 class PegarInfosAnuncioApi:
+    """Obejeto para requisitar atributos da API MercadoLivre.
 
-    _atributos: dict = {
+    Returns:
+        _type_: _description_
+    """
+
+    _atributos: dict[str, None] = {
         'gtin': None,
         'mpn': None,
         'sku': None,
@@ -24,10 +29,19 @@ class PegarInfosAnuncioApi:
     _base_url = "https://api.mercadolibre.com/items/%s/?include_attributes=all"
 
     def __init__(self, ml_interface: MLInterface) -> None:
-        self._headers: dict = ml_interface._headers()
+        self._headers: dict[str, str] = ml_interface._headers()
 
     def pegar_infos_api(self, lista_mlbs: list[str]) -> list[dict]:
-        lista_res = []
+        """Metodo para requistar informacoes da API,
+        passando como parametro o codigo MLB do anuncio.
+
+        Args:
+            lista_mlbs (list[str]): Lista de MLBs.
+
+        Returns:
+            list[dict]: Lista de reponse em JSON.
+        """
+        lista_res: list = []
         with Client() as client:
             for mlb in tqdm(lista_mlbs, desc='Pegando informacoes na API: '):
                 try:
@@ -38,11 +52,19 @@ class PegarInfosAnuncioApi:
         return lista_res
 
     def pegar_mlb_url(self, lista_url: list[str]) -> list[str]:
-        list_temp = []
-        lista_url = Series(lista_url).fillna('').to_list()
+        """Metodo para pegar o codigo MLB de uma URL. Faz um split com referencia do texto MLB.
+
+        Args:
+            lista_url (list[str]): Lista da URLs.
+
+        Returns:
+            list[str]: Lista de MLBs.
+        """
+        list_temp: list = []
+        lista_url: list[str] = Series(lista_url).fillna('').to_list()
         for x in lista_url:
             try:
-                mlb_id = x.split('MLB-')[1].split('-')[0]
+                mlb_id: str = x.split('MLB-')[1].split('-')[0]
                 if mlb_id.isnumeric():
                     list_temp.append(f'MLB{mlb_id}')
             except IndexError:
@@ -51,13 +73,29 @@ class PegarInfosAnuncioApi:
 
 
     def replace_caracteres(self, text: str) -> str:
-        _repalce_text = ReplaceCaract(text)
+        """Metodo para pegar um texto e tirar todos os caracteres especiais como acentos.
+
+        Args:
+            text (str): Texto com os caracteries especias.
+
+        Returns:
+            str: Texto limpo.
+        """
+        _repalce_text: ReplaceCaract = ReplaceCaract(text)
         _repalce_text.remover_acentos()
         _repalce_text.remover_caracteres_especiais()
         return _repalce_text.get_texto_limpo()
 
     def pegar_atributos_necessarios(self, _list_atributos: list[dict]):
+        """Metodo para pegar as chaves necessarias do JSON de requisicoes do MLB.
+        Ou seja, ele so pega o que a gente precisa.
 
+        Args:
+            _list_atributos (list[dict]): Lista de dicionarios, com as requisicoes da API.
+
+        Returns:
+            _type_: Atributos buscados.
+        """
         try:
             for key in _list_atributos.get('attributes'):
                 match key['id']:
