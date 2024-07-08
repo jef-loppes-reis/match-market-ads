@@ -7,8 +7,8 @@ from os import path, mkdir, system
 from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
 
-from pandas import DataFrame
 import bs4
+from pandas import DataFrame
 from httpx import Client
 from tqdm import tqdm
 from rich import print as pprint
@@ -21,8 +21,16 @@ from modules.siac_fuzzy import SiacFuzzy
 
 
 class Main:
+    """_summary_
 
-    _columns_default = {
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    _columns_default: dict[str, str] = {
         "lista_infos_mlb": "str",
         "lista_att_necessarios": "str",
         "mlb": "str",
@@ -52,7 +60,7 @@ class Main:
         "soma_fuzzy": "float"
     }
 
-    _df_lojas_oficiais = DataFrame(
+    _df_lojas_oficiais: DataFrame = DataFrame(
         columns=[
             "nome_loja_oficial",
             "url_loja_oficial",
@@ -69,17 +77,31 @@ class Main:
         self._oficial_stores_website: bs4.BeautifulSoup = site_lojas_oficiais
         self._ml: MLInterface = MLInterface
 
-    def select_seller(self, user_input: str):
-        _nome_condicao = user_input in self._df_lojas_oficiais[
+    def select_seller(self, user_input: str) -> tuple[str]:
+        """Metodo para o usuario selecionar o vendedor.
+
+        Args:
+            user_input (str): Nome da loja oficial.
+
+        Returns:
+            tuple[str]: Retorna nome da condicao e url da condicao
+        """
+        _nome_condicao: list[str] = user_input in self._df_lojas_oficiais[
             'nome_loja_oficial'].str.upper().to_list()
 
-        _url_condicao = user_input in self._df_lojas_oficiais[
+        _url_condicao: list[str] = user_input in self._df_lojas_oficiais[
             'url_loja_oficial'].str.upper().to_list()
 
         return (_nome_condicao, _url_condicao)
 
     def infos_lojas_oficiais(self):
+        """Pega cada loja oficial do HTML baixada e coleta as informações de nome da loja e URL da loja.
 
+        Raises:
+            ValueError: Caso o usuário persista, a finalização do programa com o comando "ctrl+c".
+        """
+
+        # Instacia da classa InfosLojaOficial
         _informacoes_loja_oficial: InfosLojaOficial = InfosLojaOficial(
             self._oficial_stores_website
         )
@@ -129,10 +151,12 @@ class Main:
                 _site_loja_oficial).pegar_link_anuncios()
 
     def informacaoes_anuncios_api(self):
+        """Método para fazer as requisições de todas as informações dos anúncios da página oficial.
+        """
         _ml_interface: MLInterface = self._ml(1)
         _df: DataFrame = self._df_lojas_oficiais
 
-        _idx = _df.index.values[0]
+        _idx: int = _df.index.values[0]
 
         _df['lista_mlbs'] = None
         _df['lista_infos_mlb'] = None
@@ -154,11 +178,14 @@ class Main:
         self._df_infos_mlb: DataFrame = _df.copy()
 
     def get_infos_fuzzy(self):
+        """Metodo para criar uma lista de matchs com a biblioteca Fuzzy. Comparando os produtos
+        do Mercado Livre com os produtos do SIAC.
+        """
 
-        _df = SiacFuzzy(self._df_infos_mlb,
+        _df: DataFrame = SiacFuzzy(self._df_infos_mlb,
                         self._columns_default).created_new_dataframe()
 
-        with ProcessPoolExecutor(max_workers=3) as executor:
+        with ProcessPoolExecutor(max_workers=12) as executor:
             try:
                 for future in tqdm(executor.map(
                     SiacFuzzy(self._df_infos_mlb,
@@ -209,7 +236,7 @@ if __name__ == "__main__":
     )
 
     if not path.exists(path.join(PATH_HERE, 'temp')):
-        mkdir([path.join(PATH_HERE, 'temp')])
+        mkdir(path.join(PATH_HERE, 'temp'))
 
     main: Main = Main(site_lojas_oficiais_driver)
     main.infos_lojas_oficiais()
