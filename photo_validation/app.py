@@ -131,11 +131,11 @@ class App:
             message='Nao possivel volta.'
         )
 
-    def __janela(self,
-                        foto_correta: bool = False,
-                        # botao_iniciar: bool = False,
-                        voltar: bool = False
-                        ) -> None:
+    def __save_data(self):
+        self.__df_copy.to_csv('results.csv', index=False)
+        self.__df_copy.to_feather('results.feather')
+
+    def __janela(self, foto_correta: bool = False, voltar: bool = False):
         """Metodo de interecao com a janela do Tkinter.
 
         Args:
@@ -147,20 +147,20 @@ class App:
             voltar a foto anterior. Defaults to False.
         """
 
-        pprint(
-            self.__df_copy
-        )
 
-        # Mostra o indices na janela, canto inferior direito.
-        self.__mostrar_indices()
+        # # Mostra o indices na janela, canto inferior direito.
+        # self.__mostrar_indices()
 
-        # Exibir a imagem na janela
-        self.__mostrar_imagem()
+        # # Exibir a imagem na janela
+        # self.__mostrar_imagem()
 
         if not voltar:
             self.__df_copy.loc[self.__index_config.get('indice_atual'), 'verifeid_photo'] = True
             self.__df_copy.loc[self.__index_config.get('indice_atual'), 'pegar_foto'] = foto_correta
+            self.__save_data()
             self.__alternar_indice(avancar=True)
+            self.__mostrar_imagem()
+            self.__mostrar_indices()
             return
 
         if voltar:
@@ -170,38 +170,46 @@ class App:
                     'indice_atual'), 'verifeid_photo'] = False
                 self.__df_copy.loc[self.__index_config.get(
                     'indice_atual'), 'pegar_foto'] = False
+                self.__save_data()
+                self.__mostrar_imagem()
+                self.__mostrar_indices()
                 return
             self.__menssagem_index_error()
+
 
     def main(self):
         """Metodo principal, executa a o objeto inteiro.
         """
 
+        pprint(self.__index_config)
+
         if self.__primeira_foto:
-            self.__janela()
             self.__primeira_foto = False
+            self.__mostrar_imagem()
+            self.__mostrar_indices()
 
         botao_foto_correta = tk.Button(
             self.__frame_botoes,
             text='Foto correta',
-            command=lambda: self.__janela(foto_correta=True)
+            bg='green',
+            command=lambda: self.__janela(foto_correta=True, voltar=False)
         )
-        botao_foto_correta.pack(side='left', padx=5, pady=5)
+        botao_foto_correta.pack(side='right', padx=5, pady=5)
 
         botao_foto_errada = tk.Button(
             self.__frame_botoes,
             text='Foto errada',
-            command=lambda: self.__janela(foto_correta=False)
+            bg='red',
+            command=lambda: self.__janela(foto_correta=False, voltar=False)
         )
-        botao_foto_errada.pack(side='right', padx=5, pady=5)
+        botao_foto_errada.pack(side='left', padx=5, pady=5)
 
         botao_foto_anterior = tk.Button(
             self.__frame_botoes,
             text='Anterior',
-            command=lambda: self.__janela(
-                foto_correta=False, voltar=True)
+            command=lambda: self.__janela(foto_correta=False, voltar=True)
         )
-        botao_foto_anterior.pack(side='left', padx=5, pady=5)
+        botao_foto_anterior.pack(side='bottom', padx=5, pady=5)
 
         self.__root.mainloop()
 
