@@ -11,8 +11,6 @@ class App:
     """_summary_
     """
 
-    __path_files_photos = path.join(path.dirname(__file__), 'out_files_photos')
-
     __df_default = DataFrame()
 
     # Configuracoes da janela
@@ -39,9 +37,12 @@ class App:
 
     __primeira_foto = True
 
-    def __init__(self) -> None:
+    def __init__(self, loja: str) -> None:
         self.__df_genuino: DataFrame = DataFrame()
         self.__df_copy: DataFrame = DataFrame()
+        self.__loja: str = loja
+        self.__path_files_photos = path.join(
+            path.dirname(__file__), f'out_files_photos/{self.__loja}')
 
     def created_new_dataframe(self):
         """Metodo para criar a planilha principal da varificacao de fotos.
@@ -60,14 +61,16 @@ class App:
         self.__df_default.loc[:, 'verifeid_photo'] = False
         self.__df_default.loc[:, 'pegar_foto'] = False
 
-        self.__df_default.to_feather('./temp/df_default.feather')
-        self.__df_default.to_csv('./temp/df_default.csv', index=False)
+        self.__df_default.to_feather('../temp/df_default.feather')
+        self.__df_default.to_csv('../temp/df_default.csv', index=False)
 
     def ler_dataframe(self):
         """Metodo para ler uma planilha de checagem, o primeiro passo do projeto "Verificacao de
         possiveis clonagens".
         """
-        self.__df_genuino = read_feather('df_default.feather')
+        # self.__df_genuino = read_feather('../temp/df_default.feather')
+        self.__df_genuino = read_feather(
+            f'../temp/conferencia_fotos_{self.__loja}.feather')
         self.__df_copy = self.__df_genuino.query('~verifeid_photo').copy()
         self.__mudar_indices(indices={
             'trava_do_indice': self.__df_copy.index.to_list()[0],
@@ -106,7 +109,7 @@ class App:
             self.__index_config.get('indice_atual'), 'path_file_photo']
 
         _img: ImageFile = Image.open(
-            f'./out_files_photos/{path_dir_img}')
+            f'./out_files_photos/sampel/{path_dir_img}')
 
         image_height: int = 500
         ratio: float = image_height / float(_img.height)
@@ -132,8 +135,8 @@ class App:
         )
 
     def __save_data(self):
-        self.__df_copy.to_csv('results.csv', index=False)
-        self.__df_copy.to_feather('results.feather')
+        self.__df_copy.to_csv(f'../temp/conferencia_fotos_{self.__loja}.csv', index=False)
+        self.__df_copy.to_feather(f'../temp/conferencia_fotos_{self.__loja}.feather')
 
     def __janela(self, foto_correta: bool = False, voltar: bool = False):
         """Metodo de interecao com a janela do Tkinter.
@@ -215,7 +218,7 @@ class App:
 
 
 if __name__ == '__main__':
-    app = App()
+    app = App(loja='sampel')
     # app.created_new_dataframe()
     app.ler_dataframe()
     app.main()
