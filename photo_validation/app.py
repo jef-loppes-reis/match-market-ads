@@ -61,8 +61,8 @@ class App:
         self.__df_default.loc[:, 'verifeid_photo'] = False
         self.__df_default.loc[:, 'pegar_foto'] = False
 
-        self.__df_default.to_feather('../temp/df_default.feather')
-        self.__df_default.to_csv('../temp/df_default.csv', index=False)
+        self.__df_default.to_feather(f'../temp/conferencia_fotos_{self.__loja}.feather')
+        self.__df_default.to_csv(f'../temp/conferencia_fotos_{self.__loja}.csv', index=False)
 
     def ler_dataframe(self):
         """Metodo para ler uma planilha de checagem, o primeiro passo do projeto "Verificacao de
@@ -109,7 +109,7 @@ class App:
             self.__index_config.get('indice_atual'), 'path_file_photo']
 
         _img: ImageFile = Image.open(
-            f'./out_files_photos/sampel/{path_dir_img}')
+            f'./out_files_photos/monroe/{path_dir_img}')
 
         image_height: int = 500
         ratio: float = image_height / float(_img.height)
@@ -218,7 +218,7 @@ class App:
 
 
 if __name__ == '__main__':
-    app = App(loja='sampel')
+    app = App(loja='monroe')
     # app.created_new_dataframe()
     app.ler_dataframe()
     app.main()

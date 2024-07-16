@@ -51,8 +51,8 @@ class GetImgFile:
 if __name__ == '__main__':
     from pandas import read_excel
     download_img = GetImgFile()
-    lista_mlb = read_excel('../data/sampel.xlsx').fillna(0).query(
+    lista_mlb = read_excel('../data/monroe.xlsx').fillna(0).query(
         'clona == 1')['mlb'].to_list()
     download_img.pegar_lista_url_api(
         lista_mlb=lista_mlb)
-    download_img.get_img_url('sampel')
+    download_img.get_img_url('monroe')
