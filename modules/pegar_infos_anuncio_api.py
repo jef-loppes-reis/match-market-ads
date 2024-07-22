@@ -98,7 +98,7 @@ class PegarInfosAnuncioApi:
         """
         try:
             for key in _list_atributos.get('attributes'):
-                match key['id']:
+                match key.get('id'):
                     case 'MPN':
                         self._atributos['mpn'] = self.replace_caracteres(key['value_name']).upper()
                     case 'OEM':
