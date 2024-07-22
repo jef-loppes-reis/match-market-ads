@@ -109,7 +109,7 @@ class App:
             self.__index_config.get('indice_atual'), 'path_file_photo']
 
         _img: ImageFile = Image.open(
-            f'./out_files_photos/monroe/{path_dir_img}')
+            f'./out_files_photos/{self.__loja}/{path_dir_img}')
 
         image_height: int = 500
         ratio: float = image_height / float(_img.height)
@@ -218,7 +218,7 @@ class App:
 
 
 if __name__ == '__main__':
-    app = App(loja='monroe')
+    app = App(loja='sampel')
     # app.created_new_dataframe()
     app.ler_dataframe()
     app.main()
