@@ -253,8 +253,6 @@ class Clanador:
 
             return created_compatibilities_count
 
-    def gerar_descricao(self):
-        veiculos = 
 
     def gerar_payload_cadastro(self, list_path_img: list[str], sku: str):
         rprint(self.corpo_clonagem)
