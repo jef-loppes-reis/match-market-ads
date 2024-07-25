@@ -52,14 +52,14 @@ class Main:
         # "oem": "str",
         # "oem_siac": "str",
         # "oem_fuzzy": "float",
-        # "oem_marca_ml": "str",
-        # "oem_marca_siac": "str",
-        # "oem_marca_fuzzy": "float",
+        "mpn_marca_ml": "str",
+        "mpn_marca_siac": "str",
+        "mpn_marca_fuzzy": "float",
         "lista_url_anuncios": "str",
         "lista_mlb": "str",
         "soma_fuzzy": "float"
     }
-
+    _nome_loja = None
     _df_lojas_oficiais: DataFrame = DataFrame(
         columns=[
             "nome_loja_oficial",
@@ -115,7 +115,20 @@ class Main:
                                     'url_loja_oficial'] = _lista_informacoes_loja_oficial[1]
 
         while True:
+            entrada = None
+            _url_loja_oficial = None
             try:
+                while True:
+                    self._nome_loja: str = input('Digite o nome da loja: ').upper()
+                    entrada: str =  input('Ja quer entrar direto com o link da loja?\n[S/N]').upper()
+                    system('cls')
+                    if entrada in ['S', 'N']:
+                        break
+                if entrada in ['S', 'N']:
+                    entrada: str = input('Digite ou cole o link da loja: ')
+                    _url_loja_oficial = entrada
+                    break
+
                 entrada: str = input(
                     'Digite o nome da loja ou a url: ').upper()
                 condicoes: tuple[bool] = self.select_seller(entrada)
@@ -128,16 +141,19 @@ class Main:
                 raise ValueError() from e
 
         with Client() as _client:
-            if condicoes[0]:
-                _url_loja_oficial = self._df_lojas_oficiais[
-                    self._df_lojas_oficiais['nome_loja_oficial'].str.upper(
-                    ) == entrada
-                ]['url_loja_oficial'].values[0]
-            if condicoes[1]:
-                _url_loja_oficial = self._df_lojas_oficiais[
-                    self._df_lojas_oficiais['url_loja_oficial'].str.upper(
-                    ) == entrada
-                ]['_url_loja_oficial'].values[0]
+            if _url_loja_oficial:
+                pass
+            else:
+                if condicoes[0]:
+                    _url_loja_oficial = self._df_lojas_oficiais[
+                        self._df_lojas_oficiais['nome_loja_oficial'].str.upper(
+                        ) == entrada
+                    ]['url_loja_oficial'].values[0]
+                if condicoes[1]:
+                    _url_loja_oficial = self._df_lojas_oficiais[
+                        self._df_lojas_oficiais['url_loja_oficial'].str.upper(
+                        ) == entrada
+                    ]['_url_loja_oficial'].values[0]
 
             _site_loja_oficial: bs4.BeautifulSoup = bs4.BeautifulSoup(
                 _client.get(_url_loja_oficial,
@@ -163,7 +179,8 @@ class Main:
         _df['lista_att_necessarios'] = None
 
         _df.at[_idx, 'lista_mlbs'] = [PegarInfosAnuncioApi(
-            _ml_interface).pegar_mlb_url(url_mlb)[0] for url_mlb in _df.loc[_idx, 'lista_url_anuncios']]
+            _ml_interface).pegar_mlb_url(
+                url_mlb)[0] for url_mlb in _df.loc[_idx, 'lista_url_anuncios']]
 
         _df.at[_idx, 'lista_infos_mlb'] = PegarInfosAnuncioApi(
             _ml_interface).pegar_infos_api(_df.loc[_idx, 'lista_mlbs']
@@ -188,13 +205,13 @@ class Main:
         with ProcessPoolExecutor(max_workers=12) as executor:
             try:
                 for future in tqdm(executor.map(
-                    SiacFuzzy(self._df_infos_mlb,
-                              self._columns_default).fuzzy_results,
+                    SiacFuzzy(self._df_infos_mlb, self._columns_default).fuzzy_results,
                     _df['gtin_ml'],
                     _df['mpn_ml'],
                     _df['sku_ml'],
                     _df['numero_original_ml'],
                     _df['marca_ml'],
+                    _df['mpn_marca_ml'],
                     _df.index
                 ), desc='Verificando matchs Ml/SIAC: ', total=len(_df)):
                     _df.at[future[6], 'gtin_siac'] = future[0][0]
@@ -212,15 +229,18 @@ class Main:
                     _df.at[future[6], 'marca_siac'] = future[4][0]
                     _df.at[future[6], 'marca_fuzzy'] = future[4][1]
 
-                    _df.loc[future[6], 'soma_fuzzy'] = future[5]
+                    _df.at[future[6], 'mpn_marca_siac'] = future[5][0]
+                    _df.at[future[6], 'mpn_marca_fuzzy'] = future[5][1]
+
+                    _df.loc[future[6], 'soma_fuzzy'] = future[6]
             except KeyError as e:
                 print('Erro!')
                 print(e)
             finally:
-                _df.sort_values('soma_fuzzy', ascending=False).to_feather(
-                    'df_resultado_fuzzy')
-                _df.sort_values('soma_fuzzy', ascending=False).to_excel(
-                    'df_resultado_fuzzy.xlsx')
+                _df.sort_values('soma_fuzzy', ascending=False).loc[:, 2:].to_feather(
+                    f'df_{self._nome_loja}_fuzzy')
+                _df.sort_values('soma_fuzzy', ascending=False).loc[:, 2:].to_excel(
+                    f'df_{self._nome_loja}_fuzzy.xlsx')
 
 
 if __name__ == "__main__":
