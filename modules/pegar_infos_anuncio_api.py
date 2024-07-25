@@ -1,9 +1,10 @@
 """---"""
 from os import system
 from json import dumps
+from time import sleep
 
 from ecomm import MLInterface
-from httpx import Client, ReadTimeout
+from httpx import Client, ReadTimeout, ConnectTimeout
 from pandas import read_feather, Series
 from tqdm import tqdm
 
@@ -44,11 +45,29 @@ class PegarInfosAnuncioApi:
         lista_res: list = []
         with Client() as client:
             for mlb in tqdm(lista_mlbs, desc='Pegando informacoes na API: '):
-                try:
-                    _res = client.get(url=self._base_url%mlb, headers=self._headers)
-                    lista_res.append(dumps(_res.json()))
-                except ReadTimeout:
-                    pass
+                tentativas: int = 0
+                while True:
+                    if tentativas > 9:
+                        print({mlb: f'Tentativas: {tentativas}'})
+                        break
+                    try:
+                        _res = client.get(url=self._base_url%mlb, headers=self._headers)
+                        if _res.status_code in [429, 500]:
+                            print({mlb: f'status_code: {_res.status_code} | tentativas: {tentativas}'})
+                            sleep(1)
+                            tentativas += 1
+                            continue
+                        lista_res.append(dumps(_res.json()))
+                        break
+                    except ReadTimeout:
+                        break
+                    except ConnectionError:
+                        sleep(10)
+                        continue
+                    except ConnectTimeout:
+                        print({mlb: f'TimeOut | tentativas: {tentativas}'})
+                        sleep(10)
+                        continue
         return lista_res
 
     def pegar_mlb_url(self, lista_url: list[str]) -> list[str]:
@@ -100,17 +119,23 @@ class PegarInfosAnuncioApi:
             for key in _list_atributos.get('attributes'):
                 match key.get('id'):
                     case 'MPN':
-                        self._atributos['mpn'] = self.replace_caracteres(key['value_name']).upper()
+                        self._atributos['mpn'] = self.replace_caracteres(
+                            key['value_name']).upper()
                     case 'OEM':
-                        self._atributos['oem'] = self.replace_caracteres(key['value_name']).upper()
+                        self._atributos['oem'] = self.replace_caracteres(
+                            key['value_name']).upper()
                     case 'GTIN':
-                        self._atributos['gtin'] = self.replace_caracteres(key['value_name']).upper()
+                        self._atributos['gtin'] = self.replace_caracteres(
+                            key['value_name']).upper()
                     case 'PART_NUMBER':
-                        self._atributos['numero_original'] = self.replace_caracteres(key['value_name']).upper()
+                        self._atributos['numero_original'] = self.replace_caracteres(
+                            key['value_name']).upper()
                     case 'SELLER_SKU':
-                        self._atributos['sku'] = self.replace_caracteres(key['value_name']).upper()
+                        self._atributos['sku'] = self.replace_caracteres(
+                            key['value_name']).upper()
                     case 'BRAND':
-                        self._atributos['marca'] = self.replace_caracteres(key['value_name']).upper()
+                        self._atributos['marca'] = self.replace_caracteres(
+                            key['value_name']).upper()
                     case _:
                         ...
         except TypeError:
@@ -123,44 +148,3 @@ class PegarInfosAnuncioApi:
                 'numero_original': None
             }
         return self._atributos
-
-if __name__ == '__main__':
-    ml = MLInterface(1)
-    pegar_infos_mlb_api = PegarInfosAnuncioApi(ml_interface=ml)
-    df = read_feather('../df_lojas_oficiais').head(1)
-    df['lista_mlb'] = None
-    df.loc[:, 'lista_mlb'] = df.loc[:, 'lista_url_anuncios'].apply(pegar_infos_mlb_api.pegar_mlb_url)
-
-    df['lista_infos_mlb'] = None
-    df['lista_att_necessarios'] = None
-
-    for idx in tqdm(df.index, desc='Loja oficial: '):
-        row = df.loc[idx].copy()
-        try:
-            if len(row['lista_mlb']) > 0:
-                df.at[idx, 'lista_infos_mlb'] = pegar_infos_mlb_api.pegar_infos_api(row['lista_mlb'])
-            system('cls')
-        except Exception as e:
-            print('Funcao 1')
-            print(e)
-            print(idx)
-            df.loc[idx, 'lista_infos_mlb'] = None
-
-    df.at[:, 'lista_mlb'] = df.loc[:, 'lista_url_anuncios'].apply(
-        pegar_infos_mlb_api.pegar_mlb_url)
-
-    for idx in df.index:
-        row = df.loc[idx].copy()
-        try:
-            if not row['lista_infos_mlb'] is None:
-                df.at[idx, 'lista_att_necessarios'] = [
-                    pegar_atributos_necessarios(atts['attributes']) for atts in row['lista_infos_mlb']
-                ]
-        except Exception as e:
-            print('Funcao 2')
-            print(e)
-            print(idx)
-            df.loc[idx, 'lista_att_necessarios'] = None
-
-
-    df.to_feather('df_infos_mlb')
