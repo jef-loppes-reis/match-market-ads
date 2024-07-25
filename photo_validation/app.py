@@ -36,6 +36,8 @@ class App:
     }
 
     __primeira_foto = True
+    __marca_dagua = False
+    __texto_img = False
 
     def __init__(self, loja: str) -> None:
         self.__df_genuino: DataFrame = DataFrame()
@@ -54,12 +56,19 @@ class App:
             lista_fotos).str.split('_', expand=True)
         _df_lista_fotos[4] = lista_fotos
 
-        self.__df_default: DataFrame = DataFrame(
-            columns=['mlb', 'verifeid_photo', 'pegar_foto'])
+        self.__df_default: DataFrame = DataFrame(columns=[
+            'mlb',
+            'verifeid_photo',
+            'pegar_foto',
+            'marca_dagua',
+            'texto_na_foto',
+        ])
         self.__df_default['mlb'] = _df_lista_fotos.iloc[:, 0]
         self.__df_default.loc[:, 'path_file_photo'] = lista_fotos
         self.__df_default.loc[:, 'verifeid_photo'] = False
         self.__df_default.loc[:, 'pegar_foto'] = False
+        self.__df_default.loc[:, 'marca_dagua'] = False
+        self.__df_default.loc[:, 'texto_na_foto'] = False
 
         self.__df_default.to_feather(f'../temp/conferencia_fotos_{self.__loja}.feather')
         self.__df_default.to_csv(f'../temp/conferencia_fotos_{self.__loja}.csv', index=False)
@@ -69,8 +78,16 @@ class App:
         possiveis clonagens".
         """
         # self.__df_genuino = read_feather('../temp/df_default.feather')
-        self.__df_genuino = read_feather(
-            f'../temp/conferencia_fotos_{self.__loja}.feather')
+        try:
+            self.__df_genuino = read_feather(
+                f'../temp/conferencia_fotos_{self.__loja}.feather')
+        except FileNotFoundError:
+            self.__menssagem_index_error(
+                msg=f'../temp/conferencia_fotos_{self.__loja}.feather\nChame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.'
+            )
+            pprint('[bright_yellow]Ops, nao encontrei a planilha de conferencia.[/bright_yellow]')
+            pprint('Chame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.')
+            raise
         self.__df_copy = self.__df_genuino.query('~verifeid_photo').copy()
         self.__mudar_indices(indices={
             'trava_do_indice': self.__df_copy.index.to_list()[0],
@@ -128,21 +145,25 @@ class App:
                 self.__index_config.get('indice_atual')
             } de {self.__index_config.get('indice_maximo')}")
 
-    def __menssagem_index_error(self):
+    def __menssagem_index_error(self, msg: str):
         messagebox.showerror(
-            title='Ops',
-            message='Nao possivel volta.'
+            title='Erro!',
+            message=msg
         )
 
     def __save_data(self):
         self.__df_copy.to_csv(f'../temp/conferencia_fotos_{self.__loja}.csv', index=False)
         self.__df_copy.to_feather(f'../temp/conferencia_fotos_{self.__loja}.feather')
 
-    def __janela(self, foto_correta: bool = False, voltar: bool = False):
+    def __janela(self,
+                 proxima_foto: bool = False,
+                 voltar: bool = False,
+                 marca_dagua: bool = False,
+                 texto_img: bool = False):
         """Metodo de interecao com a janela do Tkinter.
 
         Args:
-            foto_correta (bool): Resposta de um botao "Foto Correta", caso a foto estaja certa.
+            proxima_foto (bool): Resposta de um botao "Foto Correta", caso a foto estaja certa.
             botao_iniciar (bool, optional): Resposta de um botao "Iniciar".
             Dar alguns parametros para a funcao.
             . Defaults to False.
@@ -150,35 +171,52 @@ class App:
             voltar a foto anterior. Defaults to False.
         """
 
+        if marca_dagua:
+            self.__mudar_status_marca_dagua(True)
+        if texto_img:
+            self.__mudar_status_texto_img(True)
 
-        # # Mostra o indices na janela, canto inferior direito.
-        # self.__mostrar_indices()
+        if proxima_foto:
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'verifeid_photo'] = True
 
-        # # Exibir a imagem na janela
-        # self.__mostrar_imagem()
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'pegar_foto'] = not any([self.__marca_dagua, self.__texto_img])
 
-        if not voltar:
-            self.__df_copy.loc[self.__index_config.get('indice_atual'), 'verifeid_photo'] = True
-            self.__df_copy.loc[self.__index_config.get('indice_atual'), 'pegar_foto'] = foto_correta
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'marca_dagua'] = self.__marca_dagua
+
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'texto_na_foto'] = self.__texto_img
+
             self.__save_data()
             self.__alternar_indice(avancar=True)
             self.__mostrar_imagem()
             self.__mostrar_indices()
+            self.__mudar_status_marca_dagua(False)
+            self.__mudar_status_texto_img(False)
             return
 
         if voltar:
             if self.__index_config.get('indice_atual') > 0:
                 self.__alternar_indice(avancar=False)
-                self.__df_copy.loc[self.__index_config.get(
-                    'indice_atual'), 'verifeid_photo'] = False
-                self.__df_copy.loc[self.__index_config.get(
-                    'indice_atual'), 'pegar_foto'] = False
+                self.__mudar_status_marca_dagua(False)
+                self.__mudar_status_texto_img(False)
+                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'verifeid_photo'] = False
+                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'pegar_foto'] = False
+                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'marca_dagua'] = self.__marca_dagua
+                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'texto_na_foto'] = self.__texto_img
                 self.__save_data()
                 self.__mostrar_imagem()
                 self.__mostrar_indices()
                 return
-            self.__menssagem_index_error()
+            self.__menssagem_index_error(msg='Nao possivel volta.')
 
+    def __mudar_status_marca_dagua(self, value: bool):
+        self.__marca_dagua = value
+
+    def __mudar_status_texto_img(self, value: bool):
+        self.__texto_img = value
 
     def main(self):
         """Metodo principal, executa a o objeto inteiro.
@@ -191,34 +229,54 @@ class App:
             self.__mostrar_imagem()
             self.__mostrar_indices()
 
-        botao_foto_correta = tk.Button(
+        botao_proxima_foto = tk.Button(
             self.__frame_botoes,
-            text='Foto correta',
-            bg='green',
-            command=lambda: self.__janela(foto_correta=True, voltar=False)
+            text='Proxima Foto',
+            # bg='green',
+            command=lambda: self.__janela(
+                proxima_foto=True,
+                voltar=False
+            )
         )
-        botao_foto_correta.pack(side='right', padx=5, pady=5)
-
-        botao_foto_errada = tk.Button(
-            self.__frame_botoes,
-            text='Foto errada',
-            bg='red',
-            command=lambda: self.__janela(foto_correta=False, voltar=False)
-        )
-        botao_foto_errada.pack(side='left', padx=5, pady=5)
+        botao_proxima_foto.pack(side='right', padx=5, pady=5)
 
         botao_foto_anterior = tk.Button(
             self.__frame_botoes,
             text='Anterior',
-            command=lambda: self.__janela(foto_correta=False, voltar=True)
+            command=lambda: self.__janela(
+                proxima_foto=False,
+                voltar=True
+            )
         )
         botao_foto_anterior.pack(side='bottom', padx=5, pady=5)
+
+        botao_foto_marca_dagua = tk.Button(
+            self.__frame_botoes,
+            text="Marca d'agua",
+            command=lambda: self.__janela(
+                proxima_foto=False,
+                voltar=False,
+                marca_dagua=True
+            )
+        )
+        botao_foto_marca_dagua.pack(side='bottom', padx=5, pady=5)
+
+        botao_foto_texto_img = tk.Button(
+            self.__frame_botoes,
+            text="Texto na imagem",
+            command=lambda: self.__janela(
+                proxima_foto=False,
+                voltar=False,
+                texto_img=True
+            )
+        )
+        botao_foto_texto_img.pack(side='bottom', padx=5, pady=5)
 
         self.__root.mainloop()
 
 
 if __name__ == '__main__':
     app = App(loja='sampel')
-    # app.created_new_dataframe()
+    app.created_new_dataframe()
     app.ler_dataframe()
     app.main()
