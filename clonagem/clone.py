@@ -310,6 +310,15 @@ class Clonador:
                         {key: self.lista_attributos(sku)}
                     )
 
+    def descricao(self, item_id_novo: str, descricao: str) -> Response:
+        with Client(base_url=self._base_url) as client:
+            _res_descricao: Response = client.post(
+                url=f'/{item_id_novo}/description',
+                headers=self._headers,
+                data=dumps({'plain_text': descricao})
+            )
+        return _res_descricao
+
     def cadastro(self) -> Response:
         with Client() as client:
             return client.post(
