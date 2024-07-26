@@ -3,6 +3,11 @@ SELECT produto.produto,
     produto.num_fab,
     produto.num_orig,
     produto.fantasia as marca,
+    CASE
+        WHEN produto.embala::int = 0 THEN 1
+        WHEN produto.embala::int IS NULL THEN 1
+        ELSE produto.embala::int
+    END,
     tb_prd_loja.p_venda,
     tb_estoque.estoque,
     original.num_orig as lista_oem,

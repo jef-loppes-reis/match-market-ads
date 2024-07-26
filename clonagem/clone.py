@@ -7,7 +7,7 @@ from rich import print as rprint
 from pandas import DataFrame, isna
 
 
-class Clanador:
+class Clonador:
 
     _item_id_payload: dict[str, str | float] = {}
     _base_url: str = 'https://api.mercadolibre.com/items'
@@ -31,7 +31,7 @@ class Clanador:
     _res_mlb: dict = {}
     _res_descp: dict = {}
     _df_siac: DataFrame = DataFrame()
-    _df_siac_filter: DataFrame = DataFrame()
+    df_siac_filter: DataFrame = DataFrame()
     _corpo_compatibilidades_default: dict[str, str] = {
         'id': None,       # catalog_product_id
         'note': None,     # catalog_product_name
@@ -89,8 +89,8 @@ class Clanador:
             with open('./data/d_1_produto.sql', 'r', encoding='utf-8') as fp:
                 self._df_siac = db.query(fp.read()).copy()
 
-    def df_siac_filter(self, codpro_produto: str):
-        self._df_siac_filter: DataFrame = self._df_siac.query(
+    def read_df_siac_filter(self, codpro_produto: str):
+        self.df_siac_filter: DataFrame = self._df_siac.query(
             f'codpro == "{codpro_produto}"').reset_index(drop=True).copy()
 
     def lista_attributos(self, sku: str) -> list[dict[str, str | float]]:
@@ -107,7 +107,7 @@ class Clanador:
                             {
                                 'id': 'BRAND',
                                 'name': 'Marca',
-                                'value_name': self._df_siac_filter.loc[0, 'marca']
+                                'value_name': self.df_siac_filter.loc[0, 'marca']
                             }
                         )
                     case 'PART_NUMBER':
@@ -115,7 +115,7 @@ class Clanador:
                             {
                                 'id': 'PART_NUMBER',
                                 'name': 'Número de peça',
-                                'value_name': self._df_siac_filter.loc[0, 'num_fab']
+                                'value_name': self.df_siac_filter.loc[0, 'num_fab']
                             }
                         )
                     case 'SELLER_SKU':
@@ -135,7 +135,7 @@ class Clanador:
                                 'value_name': sub(
                                     r"[[\]']",
                                     '',
-                                    str(self._df_siac_filter.loc[:,
+                                    str(self.df_siac_filter.loc[:,
                                         'lista_oem'].to_list())
                                 )
                             }
@@ -145,7 +145,7 @@ class Clanador:
                             {
                                 'id': 'MPN',
                                 'name': 'MPN',
-                                'value_name': self._df_siac_filter.loc[0, 'num_fab']
+                                'value_name': self.df_siac_filter.loc[0, 'num_fab']
                             }
                         )
                     case 'GTIN':
@@ -153,7 +153,7 @@ class Clanador:
                             {
                                 'id': 'GTIN',
                                 'name': 'Código universal de produto',
-                                'value_name': self._df_siac_filter.loc[0, 'gtin']
+                                'value_name': self.df_siac_filter.loc[0, 'gtin']
                             }
                         )
                     case _:
@@ -175,7 +175,7 @@ class Clanador:
                             {
                                 'id': 'GTIN',
                                 'name': 'Código universal de produto',
-                                "value_name": self._df_siac_filter.loc[0, 'gtin'],
+                                "value_name": self.df_siac_filter.loc[0, 'gtin'],
                             }
                         )
 
@@ -273,11 +273,11 @@ class Clanador:
                     )
                 case 'available_quantity':
                     self.corpo_clonagem.update(
-                        {key: int(self._df_siac_filter.loc[0, 'estoque'])}
+                        {key: int(self.df_siac_filter.loc[0, 'estoque'])}
                     )
                 case 'price':
                     self.corpo_clonagem.update(
-                        {key: float(self._df_siac_filter.loc[0, 'p_venda'])}
+                        {key: float(self.df_siac_filter.loc[0, 'p_venda'])}
                     )
                 case 'listing_type_id':
                     self.corpo_clonagem.update(

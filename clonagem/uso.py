@@ -1,7 +1,7 @@
-from json import load
+from json import load, dumps
 
 from aplicacao import Aplicacao
-from clone import Clanador
+from clone import Clonador
 from ecomm import MLInterface
 from httpx import Response
 from rich import print as rprint
@@ -47,21 +47,34 @@ if __name__ == '__main__':
     df_clona_copy = df_clona_copy.sort_values(
         ['mlb', 'number_photo']).reset_index(drop=True)
 
-    clonagem: Clanador = Clanador(
+    clonagem: Clonador = Clonador(
         headers=HEADERS,
         sales_terms=sale_terms
     )
 
     clonagem.read_product_siac()
 
-    # aplic: Aplicacao = Aplicacao()
-    # aplic.read_apl()
-    # aplic.criar_ano_inicial_ano_final()
-    # aplic.etl_tabela_aplic()
+    aplic: Aplicacao = Aplicacao()
+    aplic.read_apl()
+    aplic.criar_ano_inicial_ano_final()
+
+    df_clonados: DataFrame = DataFrame(
+        columns=[
+            'item_id',
+            'corpo_json',
+            'compatibilidades',
+        ]
+    )
 
     for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'):
         row: DataFrame = df_clona_copy.query('mlb == @mlb').reset_index(drop=True).copy()
         sku: str = row['sku_certo'].unique()[0]
+
+        if len(row.loc[0, 'sku_certo'].split('_')[1:]) > 1:
+            kit: tuple[bool, int] = (True, len(row.loc[0, 'sku_certo'].split('_')[1:]))
+        else:
+            kit: tuple[bool, int] = (False, 0)
+
         codpro: str = clonagem.convert_sku_to_codpro(
             sku=sku
         )[0]
@@ -76,7 +89,7 @@ if __name__ == '__main__':
         # )
         print(row)
 
-        clonagem.df_siac_filter(
+        clonagem.read_df_siac_filter(
             codpro_produto=codpro
         )
 
@@ -90,10 +103,41 @@ if __name__ == '__main__':
             sku=sku
         )
 
-        retorno_cadastro: str = ML_INTERFACE.post_item(clonagem.corpo_clonagem)
-
-        clonagem.compatibilidades()
+        clonagem.corpo_clonagem.update({
+            'description': aplic.criar_descricao(
+                codpro=codpro,
+                aplicacao_veiculos=aplic.get_aplicacao(original=clonagem.df_siac_filter.loc[0, 'num_orig']),
+                marca=clonagem.df_siac_filter.loc[0, 'marca'],
+                multiplo_venda=clonagem.df_siac_filter.loc[0, 'embala'],
+                kit=kit[0],
+                num_fab=sku,
+                oems=aplic.lista_originais(clonagem.df_siac_filter.loc[0, 'num_orig']),
+                titulo=clonagem.corpo_clonagem.get('title')
+            )
+        })
 
         rprint(clonagem.corpo_clonagem)
+
+        retorno_cadastro: dict = ML_INTERFACE.post_item(
+            clonagem.corpo_clonagem
+        )
+
+        compati: int = clonagem.compatibilidades(
+            item_id_ml_clone=mlb,
+            item_id_novo=retorno_cadastro.get('id'),
+            # view_compati=True
+        )
+
+        df_clonados.loc[len(df_clonados)] = {
+            'item_id': retorno_cadastro.get('id'),
+            'corpo_json': dumps(retorno_cadastro),
+            'compatibilidades': compati
+        }
+
+        df_clonados.to_csv('df_clonados.csv', index=False)
+
+        rprint(clonagem.corpo_clonagem)
+        # rprint(clonagem._df_siac_filter.query('codpro == @codpro'))
         rprint(retorno_cadastro)
+        rprint({'qtd_compatibilidades_cadastradas': compati})
         break
