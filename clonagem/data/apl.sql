@@ -1,0 +1,17 @@
+SELECT ec_apl.num_orig,
+    ec_apl.marca,
+    ec_apl.novo,
+    ec_apl.modelo,
+    ec_apl.versao,
+    ec_apl.pacote,
+    ec_apl.carroceria,
+    ec_apl.tracao,
+    ec_apl.cambio,
+    ec_apl.cilindradas,
+    ec_apl.valvulas,
+    ec_apl.n_cilindros,
+    ec_apl.ano_i,
+    ec_apl.ano_f,
+    ec_apl.combustivel,
+    ec_apl.obs_cliente
+FROM "ECOMM".ec_apl;

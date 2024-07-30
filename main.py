@@ -8,16 +8,15 @@ from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
 
 import bs4
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from httpx import Client
 from tqdm import tqdm
-from rich import print as pprint
+from rich import print as rprint
 from ecomm import MLInterface
 
-from modules.anuncios_loja_oficial import AnunciosLojaOficial
-from modules.informacoes_loja_oficial import InfosLojaOficial
-from modules.pegar_infos_anuncio_api import PegarInfosAnuncioApi
-from modules.siac_fuzzy import SiacFuzzy
+from utils.anuncios_loja_oficial import AnunciosLojaOficial
+from utils.pegar_infos_anuncio_api import PegarInfosAnuncioApi
+from utils.siac_fuzzy import SiacFuzzy
 
 
 class Main:
@@ -57,7 +56,8 @@ class Main:
         "mpn_marca_fuzzy": "float",
         "lista_url_anuncios": "str",
         "lista_mlb": "str",
-        "soma_fuzzy": "float"
+        "soma_fuzzy": "float",
+        "clona": "str"
     }
     _nome_loja = None
     _df_lojas_oficiais: DataFrame = DataFrame(
@@ -73,98 +73,29 @@ class Main:
 
     _siac_fuzzy = None
 
-    def __init__(self, site_lojas_oficiais) -> None:
-        self._oficial_stores_website: bs4.BeautifulSoup = site_lojas_oficiais
+    def __init__(self) -> None:
         self._ml: MLInterface = MLInterface
 
-    def select_seller(self, user_input: str) -> tuple[str]:
-        """Metodo para o usuario selecionar o vendedor.
-
-        Args:
-            user_input (str): Nome da loja oficial.
-
-        Returns:
-            tuple[str]: Retorna nome da condicao e url da condicao
-        """
-        _nome_condicao: list[str] = user_input in self._df_lojas_oficiais[
-            'nome_loja_oficial'].str.upper().to_list()
-
-        _url_condicao: list[str] = user_input in self._df_lojas_oficiais[
-            'url_loja_oficial'].str.upper().to_list()
-
-        return (_nome_condicao, _url_condicao)
-
     def infos_lojas_oficiais(self):
-        """Pega cada loja oficial do HTML baixada e coleta as informações de nome da loja e URL da loja.
-
-        Raises:
-            ValueError: Caso o usuário persista, a finalização do programa com o comando "ctrl+c".
-        """
-
-        # Instacia da classa InfosLojaOficial
-        _informacoes_loja_oficial: InfosLojaOficial = InfosLojaOficial(
-            self._oficial_stores_website
-        )
-
-        _lista_informacoes_loja_oficial: list[str] = _informacoes_loja_oficial.get_infos_seller(
-        )
-
-        self._df_lojas_oficiais.loc[:,
-                                    'nome_loja_oficial'] = _lista_informacoes_loja_oficial[0]
-        self._df_lojas_oficiais.loc[:,
-                                    'url_loja_oficial'] = _lista_informacoes_loja_oficial[1]
-
-        while True:
-            entrada = None
-            _url_loja_oficial = None
-            try:
-                while True:
-                    self._nome_loja: str = input('Digite o nome da loja: ').upper()
-                    entrada: str =  input('Ja quer entrar direto com o link da loja?\n[S/N]').upper()
-                    system('cls')
-                    if entrada in ['S', 'N']:
-                        break
-                if entrada in ['S', 'N']:
-                    entrada: str = input('Digite ou cole o link da loja: ')
-                    _url_loja_oficial = entrada
-                    break
-
-                entrada: str = input(
-                    'Digite o nome da loja ou a url: ').upper()
-                condicoes: tuple[bool] = self.select_seller(entrada)
-                if True in condicoes:
-                    break
-                system('cls')
-                pprint('Nao tenho esse vendedor !\n')
-            except KeyboardInterrupt as e:
-                pprint('Programa finalizado.')
-                raise ValueError() from e
+        entrada = None
+        _url_loja_oficial = None
+        rprint('[bright_yellow]Digite o nome da loja:[/bright_yellow]')
+        self._nome_loja: str = input().upper()
+        rprint('[bright_yellow]Digite o link da pagina de anuncios:[/bright_yellow]')
+        entrada: str = input()
+        _url_loja_oficial = entrada
 
         with Client() as _client:
-            if _url_loja_oficial:
-                pass
-            else:
-                if condicoes[0]:
-                    _url_loja_oficial = self._df_lojas_oficiais[
-                        self._df_lojas_oficiais['nome_loja_oficial'].str.upper(
-                        ) == entrada
-                    ]['url_loja_oficial'].values[0]
-                if condicoes[1]:
-                    _url_loja_oficial = self._df_lojas_oficiais[
-                        self._df_lojas_oficiais['url_loja_oficial'].str.upper(
-                        ) == entrada
-                    ]['_url_loja_oficial'].values[0]
 
             _site_loja_oficial: bs4.BeautifulSoup = bs4.BeautifulSoup(
-                _client.get(_url_loja_oficial,
-                            timeout=None).content, 'html.parser'
+                _client.get(_url_loja_oficial, timeout=None).content,
+                'html.parser'
             )
 
-            self._df_lojas_oficiais = self._df_lojas_oficiais.query(
-                'url_loja_oficial == @_url_loja_oficial').reset_index(drop=True).copy()
-
-            self._df_lojas_oficiais.at[0, 'lista_url_anuncios'] = AnunciosLojaOficial(
+            _lista_link_anuncios_seller: list[str] = AnunciosLojaOficial(
                 _site_loja_oficial).pegar_link_anuncios()
+
+            self._df_lojas_oficiais['lista_url_anuncios'] = Series(_lista_link_anuncios_seller)
 
     def informacaoes_anuncios_api(self):
         """Método para fazer as requisições de todas as informações dos anúncios da página oficial.
@@ -172,75 +103,97 @@ class Main:
         _ml_interface: MLInterface = self._ml(1)
         _df: DataFrame = self._df_lojas_oficiais
 
-        _idx: int = _df.index.values[0]
+        # _idx: int = _df.index.values[0]
 
         _df['lista_mlbs'] = None
         _df['lista_infos_mlb'] = None
         _df['lista_att_necessarios'] = None
 
-        _df.at[_idx, 'lista_mlbs'] = [PegarInfosAnuncioApi(
-            _ml_interface).pegar_mlb_url(
-                url_mlb)[0] for url_mlb in _df.loc[_idx, 'lista_url_anuncios']]
+        _df.loc[:, 'lista_mlbs'] = Series([
+            PegarInfosAnuncioApi(_ml_interface)
+            .pegar_mlb_url(url_mlb) for url_mlb in _df.loc[:, 'lista_url_anuncios']
+        ])
 
-        _df.at[_idx, 'lista_infos_mlb'] = PegarInfosAnuncioApi(
-            _ml_interface).pegar_infos_api(_df.loc[_idx, 'lista_mlbs']
-                                           )
+        _df.loc[:, 'lista_infos_mlb'] = Series(
+            PegarInfosAnuncioApi(_ml_interface)
+            .pegar_infos_api(_df.loc[:, 'lista_mlbs'].to_list())
+        )
 
-        _df.at[_idx, 'lista_att_necessarios'] = [
-            dumps(PegarInfosAnuncioApi(
-                _ml_interface).pegar_atributos_necessarios(
-                    loads(atts))) for atts in _df.loc[_idx, 'lista_infos_mlb']
-        ]
+        _df.at[:, 'lista_att_necessarios'] = Series(
+            [
+                dumps(PegarInfosAnuncioApi(_ml_interface)
+                      .pegar_atributos_necessarios(loads(atts))
+                ) for atts in _df.loc[:, 'lista_infos_mlb']
+            ]
+        )
 
-        self._df_infos_mlb: DataFrame = _df.copy()
+        # _df.to_excel('teste_informacoes_anuncios.xlsx')
+
+        self._df_infos_mlb: DataFrame = _df.reset_index(drop=True).copy()
 
     def get_infos_fuzzy(self):
         """Metodo para criar uma lista de matchs com a biblioteca Fuzzy. Comparando os produtos
         do Mercado Livre com os produtos do SIAC.
         """
+        _path_fuzzys: str = f'./fuzzys/{self._nome_loja}'
+        if not path.exists(_path_fuzzys):
+            mkdir(_path_fuzzys)
 
-        _df: DataFrame = SiacFuzzy(self._df_infos_mlb,
-                        self._columns_default).created_new_dataframe()
+        _df: DataFrame = SiacFuzzy(
+            self._df_infos_mlb,
+            self._columns_default
+        ).created_new_dataframe()
+
+        _siac_fuzzy: SiacFuzzy = SiacFuzzy(
+            self._df_infos_mlb,
+            self._columns_default
+        )
 
         with ProcessPoolExecutor(max_workers=12) as executor:
             try:
-                for future in tqdm(executor.map(
-                    SiacFuzzy(self._df_infos_mlb, self._columns_default).fuzzy_results,
-                    _df['gtin_ml'],
-                    _df['mpn_ml'],
-                    _df['sku_ml'],
-                    _df['numero_original_ml'],
-                    _df['marca_ml'],
-                    _df['mpn_marca_ml'],
-                    _df.index
-                ), desc='Verificando matchs Ml/SIAC: ', total=len(_df)):
-                    _df.at[future[6], 'gtin_siac'] = future[0][0]
-                    _df.at[future[6], 'gtin_fuzzy'] = future[0][1]
+                for future in tqdm(executor.map(_siac_fuzzy.fuzzy_results,
+                                                _df['gtin_ml'],
+                                                _df['mpn_ml'],
+                                                _df['sku_ml'],
+                                                _df['numero_original_ml'],
+                                                _df['marca_ml'],
+                                                _df['mpn_marca_ml'],
+                                                _df.index
+                                            ),
+                                        desc='Verificando matchs Ml/SIAC: ',
+                                        colour='green', total=len(_df)
+                                ):
+                    _df.at[future.get('df_index'), 'gtin_siac'] = future.get('gtin_siac')
+                    _df.at[future.get('df_index'), 'gtin_fuzzy'] = future.get('score_gtin_before')
 
-                    _df.at[future[6], 'mpn_siac'] = future[1][0]
-                    _df.at[future[6], 'mpn_fuzzy'] = future[1][1]
+                    _df.at[future.get('df_index'), 'mpn_siac'] = future.get('mpn_siac')
+                    _df.at[future.get('df_index'), 'mpn_fuzzy'] = future.get('score_mpn_before')
 
-                    _df.at[future[6], 'sku_siac'] = future[2][0]
-                    _df.at[future[6], 'sku_fuzzy'] = future[2][1]
+                    _df.at[future.get('df_index'), 'sku_siac'] = future.get("sku_siac")
+                    _df.at[future.get('df_index'), 'sku_fuzzy'] = future.get('score_sku_before')
 
-                    _df.at[future[6], 'numero_original_siac'] = future[3][0]
-                    _df.at[future[6], 'numero_original_fuzzy'] = future[3][1]
+                    _df.at[future.get('df_index'), 'numero_original_siac'] = future.get('num_orig_siac')
+                    _df.at[future.get('df_index'), 'numero_original_fuzzy'] = future.get('score_num_orig_before')
 
-                    _df.at[future[6], 'marca_siac'] = future[4][0]
-                    _df.at[future[6], 'marca_fuzzy'] = future[4][1]
+                    _df.at[future.get('df_index'), 'marca_siac'] = future.get('marca_siac')
+                    _df.at[future.get('df_index'), 'marca_fuzzy'] = future.get('score_marca_before')
 
-                    _df.at[future[6], 'mpn_marca_siac'] = future[5][0]
-                    _df.at[future[6], 'mpn_marca_fuzzy'] = future[5][1]
+                    _df.at[future.get('df_index'), 'mpn_marca_siac'] = future.get('mpn_marca_siac')
+                    _df.at[future.get('df_index'), 'mpn_marca_fuzzy'] = future.get('score_mpn_marca_before')
 
-                    _df.loc[future[6], 'soma_fuzzy'] = future[6]
+                    _df.loc[future.get('df_index'), 'soma_fuzzy'] = future.get('sum_scores')
+
+                # _df = _df.loc[:, 2:]
             except KeyError as e:
                 print('Erro!')
                 print(e)
             finally:
-                _df.sort_values('soma_fuzzy', ascending=False).loc[:, 2:].to_feather(
-                    f'df_{self._nome_loja}_fuzzy')
-                _df.sort_values('soma_fuzzy', ascending=False).loc[:, 2:].to_excel(
-                    f'df_{self._nome_loja}_fuzzy.xlsx')
+                _df.sort_values('soma_fuzzy', ascending=False).to_feather(
+                    f'{_path_fuzzys}/df_{self._nome_loja}_fuzzy'
+                )
+                _df.sort_values('soma_fuzzy', ascending=False).to_excel(
+                    f'{_path_fuzzys}/df_{self._nome_loja}_fuzzy.xlsx'
+                )
 
 
 if __name__ == "__main__":
@@ -258,7 +211,7 @@ if __name__ == "__main__":
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
-    main: Main = Main(site_lojas_oficiais_driver)
+    main: Main = Main()
     main.infos_lojas_oficiais()
     main.informacaoes_anuncios_api()
     main.get_infos_fuzzy()
