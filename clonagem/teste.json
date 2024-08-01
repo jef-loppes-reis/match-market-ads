@@ -1,0 +1,280 @@
+{
+    "title": "Par Amortecedor Dianteiro Ford Ka 2015 2016 2017 2018 2019",
+    "category_id": "MLB22709",
+    "official_store_id": 5329,
+    "price": 326.3,
+    "available_quantity": 30,
+    "currency_id": "BRL",
+    "buying_mode": "buy_it_now",
+    "condition": "new",
+    "listing_type_id": "gold_pro",
+    "sale_terms": [
+        {
+            "id": "WARRANTY_TYPE",
+            "name": "Tipo de garantia",
+            "value_id": "2230279",
+            "value_name": "Garantia de fábrica",
+            "value_struct": null,
+            "values": [
+                {
+                    "id": "2230279",
+                    "name": "Garantia de fábrica",
+                    "struct": null
+                }
+            ],
+            "value_type": "list"
+        },
+        {
+            "id": "WARRANTY_TIME",
+            "name": "Tempo de garantia",
+            "value_id": null,
+            "value_name": "3 meses",
+            "value_struct": {
+                "number": 3,
+                "unit": "meses"
+            },
+            "values": [
+                {
+                    "id": null,
+                    "name": "3 meses",
+                    "struct": {
+                        "number": 3,
+                        "unit": "meses"
+                    }
+                }
+            ],
+            "value_type": "number_unit"
+        }
+    ],
+    "pictures": [
+        {
+            "id": "778152-MLB77980994673_072024"
+        },
+        {
+            "id": "907105-MLB77981024399_072024"
+        },
+        {
+            "id": "636524-MLB77760917510_072024"
+        }
+    ],
+    "attributes": [
+        {
+            "id": "BRAND",
+            "name": "Marca",
+            "value_name": "MONROE"
+        },
+        {
+            "id": "GTIN",
+            "name": "Código universal de produto",
+            "value_name": "7899027349437"
+        },
+        {
+            "id": "HAS_COMPATIBILITIES",
+            "name": "Tem compatibilidades",
+            "value_id": "242085",
+            "value_name": "Sim",
+            "values": [
+                {
+                    "id": "242085",
+                    "name": "Sim",
+                    "struct": null
+                }
+            ],
+            "value_type": "boolean"
+        },
+        {
+            "id": "IS_KIT",
+            "name": "É kit",
+            "value_id": "242085",
+            "value_name": "Sim",
+            "values": [
+                {
+                    "id": "242085",
+                    "name": "Sim",
+                    "struct": null
+                }
+            ],
+            "value_type": "boolean"
+        },
+        {
+            "id": "ITEM_CONDITION",
+            "name": "Condição do item",
+            "value_id": "2230284",
+            "value_name": "Novo",
+            "values": [
+                {
+                    "id": "2230284",
+                    "name": "Novo",
+                    "struct": null
+                }
+            ],
+            "value_type": "list"
+        },
+        {
+            "id": "PACKAGE_HEIGHT",
+            "name": "Altura da embalagem",
+            "value_id": null,
+            "value_name": "16 cm",
+            "values": [
+                {
+                    "id": null,
+                    "name": "16 cm",
+                    "struct": {
+                        "number": 16,
+                        "unit": "cm"
+                    }
+                }
+            ],
+            "value_type": "number_unit"
+        },
+        {
+            "id": "PACKAGE_LENGTH",
+            "name": "Comprimento da embalagem",
+            "value_id": null,
+            "value_name": "63 cm",
+            "values": [
+                {
+                    "id": null,
+                    "name": "63 cm",
+                    "struct": {
+                        "number": 63,
+                        "unit": "cm"
+                    }
+                }
+            ],
+            "value_type": "number_unit"
+        },
+        {
+            "id": "PACKAGE_WEIGHT",
+            "name": "Peso da embalagem",
+            "value_id": null,
+            "value_name": "7180 g",
+            "values": [
+                {
+                    "id": null,
+                    "name": "7180 g",
+                    "struct": {
+                        "number": 7180,
+                        "unit": "g"
+                    }
+                }
+            ],
+            "value_type": "number_unit"
+        },
+        {
+            "id": "PACKAGE_WIDTH",
+            "name": "Largura da embalagem",
+            "value_id": null,
+            "value_name": "30.5 cm",
+            "values": [
+                {
+                    "id": null,
+                    "name": "30.5 cm",
+                    "struct": {
+                        "number": 30.5,
+                        "unit": "cm"
+                    }
+                }
+            ],
+            "value_type": "number_unit"
+        },
+        {
+            "id": "PART_NUMBER",
+            "name": "Número de peça",
+            "value_name": "SP357"
+        },
+        {
+            "id": "POSITION",
+            "name": "Posição",
+            "value_id": null,
+            "value_name": "Dianteiro",
+            "values": [
+                {
+                    "id": null,
+                    "name": "Dianteiro",
+                    "struct": null
+                }
+            ],
+            "value_type": "string"
+        },
+        {
+            "id": "PRODUCT_FEATURES",
+            "name": "Características do produto",
+            "value_id": null,
+            "value_name": "Frágil,Sem validade",
+            "values": [
+                {
+                    "id": "7435883",
+                    "name": "Frágil",
+                    "struct": null
+                },
+                {
+                    "id": "8847339",
+                    "name": "Sem validade",
+                    "struct": null
+                }
+            ],
+            "value_type": "list"
+        },
+        {
+            "id": "SELLER_SKU",
+            "name": "SKU",
+            "value_name": "K_087068_087066"
+        },
+        {
+            "id": "SHIPMENT_PACKING",
+            "name": "Embalagem do envío",
+            "value_id": "7575939",
+            "value_name": "Auto-expedível",
+            "values": [
+                {
+                    "id": "7575939",
+                    "name": "Auto-expedível",
+                    "struct": null
+                }
+            ],
+            "value_type": "list"
+        },
+        {
+            "id": "SIDE_POSITION",
+            "name": "Lado",
+            "value_id": "5365767",
+            "value_name": "Esquerdo/Direito",
+            "values": [
+                {
+                    "id": "5365767",
+                    "name": "Esquerdo/Direito",
+                    "struct": null
+                }
+            ],
+            "value_type": "list"
+        },
+        {
+            "id": "VEHICLE_TYPE",
+            "name": "Tipo de veículo",
+            "value_id": "11377043",
+            "value_name": "Carro/Caminhonete",
+            "values": [
+                {
+                    "id": "11377043",
+                    "name": "Carro/Caminhonete",
+                    "struct": null
+                }
+            ],
+            "value_type": "list"
+        },
+        {
+            "id": "SELLER_SKU",
+            "name": "SKU",
+            "value_name": "K_087068_087066"
+        },
+        {
+            "id": "GTIN",
+            "name": "Código universal de produto",
+            "value_name": "7899027349437"
+        }
+    ],
+    "variations": [],
+    "video_id": "e4lB8zcfDt8",
+    "description": "Par Amortecedor Dianteiro Ford Ka 2015 2016 2017 2018 2019\n\nSERVE NOS SEGUINTES VEÍCULOS:\n(Em caso de dúvidas, perguntar no campo de perguntas.)\n\n•  FORD NEW FIESTA de 2010 em diante\n•  FORD KA de 2014 em diante\n\n\n\nCARACTERÍSTICAS DO PRODUTO:\n• Marca: MONROE\n• Código da peça: K_087068_087066\n• Código de referência: GP30542, 34803G, AMD13204, SP357, GP30582, HG41023\n\nCONTEÚDO DA EMBALAGEM:\n• 1 Kit\n\nOBSERVAÇÃO:\n• A Responsabilidade de confirmar a aplicação no veículo é exclusivamente do proprietário e do mecânico, uma vez que não temos acesso pessoal e visual da peça instalada.\n• Nossos produtos tem garantia de fábrica de 3 meses. Não cobrimos má instalação ou mau uso do produto, recomendamos que a instalação seja feita por um profissional especializado.\n• As compras realizadas em nome de Pessoa Jurídica podem estar sujeitas à cobrança de ICMS e DIFAL, conforme Protocolo ICMS 41, de 4 de Abril de 2008. Caso você tenha dúvidas sobre o percentual a ser aplicado, consulte a Cláusula Segunda, §1° do referido Protocolo.\n• Para devolução por Defeito de Fabricação o produto deve acompanhar a Nota Fiscal de compra para sua identificação. Sem ela (Nota Fiscal), não é possível identificar o solicitante da Garantia\n• O produto deve ser devolvido nas mesmas condições em que foi enviado (na embalagem original, sem sinais de utilização para a perfeita condição de uso do próximo comprador).\n• Caixa (s) e Imagem (s) Ilustrativa (s), meramente comercial para efeito estético e informativo de marca e modelo do anúncio.\n\nNÚMERO INTERNO:\n• 087068"
+}
