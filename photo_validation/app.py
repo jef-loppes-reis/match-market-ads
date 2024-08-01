@@ -1,10 +1,10 @@
-from os import path, listdir
+from os import path, listdir, system
 import tkinter as tk
 from tkinter import messagebox
 
 from PIL import Image, ImageTk, ImageFile
 from pandas import DataFrame, Series, read_feather
-from rich import print as pprint
+from rich import print as rprint
 
 
 class App:
@@ -35,15 +35,15 @@ class App:
         'indice_maximo': 0,
     }
 
-    __primeira_foto = True
-    __marca_dagua = False
-    __texto_img = False
+    __primeira_foto: bool = True
+    __marca_dagua: bool = False
+    __texto_img: bool = False
 
     def __init__(self, loja: str) -> None:
         self.__df_genuino: DataFrame = DataFrame()
         self.__df_copy: DataFrame = DataFrame()
         self.__loja: str = loja
-        self.__path_files_photos = path.join(
+        self.__path_files_photos: str = path.join(
             path.dirname(__file__), f'out_files_photos/{self.__loja}')
 
     def created_new_dataframe(self):
@@ -85,8 +85,8 @@ class App:
             self.__menssagem_index_error(
                 msg=f'../temp/conferencia_fotos_{self.__loja}.feather\nChame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.'
             )
-            pprint('[bright_yellow]Ops, nao encontrei a planilha de conferencia.[/bright_yellow]')
-            pprint('Chame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.')
+            rprint('[bright_yellow]Ops, nao encontrei a planilha de conferencia.[/bright_yellow]')
+            rprint('Chame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.')
             raise
         self.__df_copy = self.__df_genuino.query('~verifeid_photo').copy()
         self.__mudar_indices(indices={
@@ -222,7 +222,7 @@ class App:
         """Metodo principal, executa a o objeto inteiro.
         """
 
-        pprint(self.__index_config)
+        rprint(self.__index_config)
 
         if self.__primeira_foto:
             self.__primeira_foto = False
@@ -276,7 +276,27 @@ class App:
 
 
 if __name__ == '__main__':
-    app = App(loja='sampel')
-    app.created_new_dataframe()
+
+    rprint('Digite o nome da loja: ')
+    NOME_LOJA: str = input()
+    while True:
+        rprint(f'[bright_yellow]Nome da loja informada [bright_magenta]{NOME_LOJA.upper()}[/bright_magenta][/bright_yellow]')
+        rprint('[bright_yellow]Esta comecando a conferencia agora? Ou deseja continuar de onde parou?[/bright_yellow]')
+        rprint('1. Inicio.\n2. Continuar.')
+        flag: int = int(input())
+        match flag:
+            case 1:
+                INICIO: bool = True
+            case 2:
+                INICIO: bool = False
+            case _:
+                system('cls')
+                rprint(f'[blue]{flag}[/blue] [red]e uma opcao nao valida![/red]')
+                continue
+        break
+
+    app = App(loja=NOME_LOJA)
+    if INICIO:
+        app.created_new_dataframe()
     app.ler_dataframe()
     app.main()

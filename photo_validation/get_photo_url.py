@@ -1,7 +1,7 @@
 from os import path, mkdir
 
 from httpx import Client, Response
-from rich import print as pprint
+from rich import print as rprint
 from ecomm import MLInterface
 from tqdm import tqdm
 
@@ -60,10 +60,22 @@ class GetImgFile:
 
 if __name__ == '__main__':
     from pandas import read_excel
-    NOME_LOJA = 'takao'
+
+    rprint('Digite o nome da loja: ')
+    NOME_LOJA = input().lower()
+    if not path.exists(f'../data/planilhas_primeiro_processo/{NOME_LOJA}.xlsx'):
+        rprint(f'[bright_yellow]Ops, nao existe uma planilha de primeira conferencia com esse nome [blue]{NOME_LOJA}.xlsx[/blue][/bright_yellow]')
+        # raise ValueError('Planilha nao encontrada!')
     download_img = GetImgFile(NOME_LOJA)
+    
     lista_mlb: list[str] = (
-        read_excel(f'../data/{NOME_LOJA}.xlsx')
+        read_excel(
+            path.join(
+                path.dirname(__file__),
+                '../data/planilhas_primeiro_processo/'
+                f'{NOME_LOJA}.xlsx'
+            )
+        )
         .fillna(0)
         .query('clona == 1')['mlb']
         .to_list()
