@@ -36,25 +36,23 @@ class SiacFuzzy:
         # pprint(self._df_infos_mlb.lista_mlbs.values[0])
         # pprint(self._df_infos_mlb.lista_url_anuncios.values[0])
 
-        list_atts = [loads(atts) for atts in self._df_infos_mlb.loc[0, 'lista_att_necessarios']]
+        list_atts = [loads(atts) for atts in self._df_infos_mlb.loc[:, 'lista_att_necessarios']]
 
-        _df['lista_url_anuncios'] = self._df_infos_mlb.lista_url_anuncios.values[0]
+        _df['lista_url_anuncios'] = self._df_infos_mlb.lista_url_anuncios
 
-        _df.loc[:, 'mlb'] = self._df_infos_mlb.lista_mlbs.values[0]
+        _df.loc[:, 'mlb'] = self._df_infos_mlb.lista_mlbs
 
-        _df.loc[:, 'gtin_ml'] = [id_att['gtin'] for id_att in list_atts]
+        _df.loc[:, 'gtin_ml'] = [id_att.get('gtin') for id_att in list_atts]
 
-        _df.loc[:, 'sku_ml'] = [id_att['sku'] for id_att in list_atts]
+        _df.loc[:, 'sku_ml'] = [id_att.get('sku') for id_att in list_atts]
 
-        _df.loc[:, 'marca_ml'] = [id_att['marca'] for id_att in list_atts]
+        _df.loc[:, 'marca_ml'] = [id_att.get('marca') for id_att in list_atts]
 
-        _df.loc[:, 'mpn_ml'] = [id_att['mpn'] for id_att in list_atts]
+        _df.loc[:, 'mpn_ml'] = [id_att.get('mpn') for id_att in list_atts]
 
-        _df.loc[:, 'numero_original_ml'] = [id_att['numero_original'] for id_att in list_atts]
+        _df.loc[:, 'numero_original_ml'] = [id_att.get('numero_original') for id_att in list_atts]
 
-        _df.loc[:, 'mpn_marca_ml'] = [f'{id_att['mpn']}_{id_att['marca']}' for id_att in list_atts]
-
-        # _df.loc[:, 'oem_ml'] = [id_att['oem'] for id_att in list_atts]
+        _df.loc[:, 'mpn_marca_ml'] = [f'{id_att.get('mpn')}_{id_att.get('marca')}' for id_att in list_atts]
 
         return _df
 
@@ -67,7 +65,7 @@ class SiacFuzzy:
             marca: str,
             mpn_marca: str,
             df_index: int
-        ) -> tuple[list[str | int]]:
+        ) -> dict:
 
         similarity_score_gtin_before = 0
         similarity_score_mpn_before = 0
@@ -117,20 +115,26 @@ class SiacFuzzy:
                 similarity_score_mpn_marca_before = similarity_score_mpn_marca_after
                 _mpn_marca = f'{_row_siac['mpn']}_{_row_siac['marca']}'
 
-            sum_sores = sum([similarity_score_gtin_before,
-                                similarity_score_mpn_before,
-                                similarity_score_sku_before,
-                                similarity_score_num_orig_before,
-                                similarity_score_marca_before,
-                                similarity_score_mpn_before])
+        sum_sores = sum([similarity_score_gtin_before,
+                            similarity_score_mpn_before,
+                            similarity_score_sku_before,
+                            similarity_score_num_orig_before,
+                            similarity_score_marca_before,
+                            similarity_score_mpn_before])
 
-        return (
-            [_gtin, similarity_score_gtin_before],
-            [_mpn, similarity_score_mpn_before],
-            [_sku, similarity_score_sku_before],
-            [_num_orig, similarity_score_num_orig_before],
-            [_marca, similarity_score_marca_before],
-            [_mpn_marca, similarity_score_mpn_marca_before],
-            sum_sores,
-            df_index
-        )
+        return {
+            'gtin_siac': _gtin,
+            'score_gtin_before': similarity_score_gtin_before,
+            'mpn_siac': _mpn,
+            'score_mpn_before': similarity_score_mpn_before,
+            'sku_siac': _sku,
+            'score_sku_before': similarity_score_sku_before,
+            'num_orig_siac': _num_orig,
+            'score_num_orig_before': similarity_score_num_orig_before,
+            'marca_siac': _marca,
+            'score_marca_before': similarity_score_marca_before,
+            'mpn_marca_siac': _mpn_marca,
+            'score_mpn_marca_before': similarity_score_mpn_marca_after,
+            'sum_scores': sum_sores,
+            'df_index': df_index
+        }

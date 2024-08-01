@@ -43,6 +43,7 @@ class AnunciosLojaOficial:
                 driver_anuncios: BeautifulSoup = self.entrar_pagina(client=_client, url=link_pagina)
                 for lista_anuncios in driver_anuncios.find_all(self._anuncios[0], self._anuncios[1]):
                     lista_link_anuncios.extend([anuncio.find('a')['href'] for anuncio in lista_anuncios])
+                break
         return lista_link_anuncios
 
 

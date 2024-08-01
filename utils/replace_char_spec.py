@@ -9,7 +9,7 @@ class ReplaceCaract:
     _texto_limpo = None
 
     def __init__(self, texto: str) -> None:
-        self._texto: str = texto
+        self._texto: str = '' if texto is None else texto
 
     def remover_acentos(self) -> str:
         # Normaliza o texto para decompor caracteres acentuados

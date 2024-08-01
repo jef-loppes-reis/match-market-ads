@@ -8,7 +8,7 @@ from httpx import Client, ReadTimeout, ConnectTimeout
 from pandas import read_feather, Series
 from tqdm import tqdm
 
-from modules.replace_char_spec import ReplaceCaract
+from utils.replace_char_spec import ReplaceCaract
 
 
 class PegarInfosAnuncioApi:
@@ -70,7 +70,7 @@ class PegarInfosAnuncioApi:
                         continue
         return lista_res
 
-    def pegar_mlb_url(self, lista_url: list[str]) -> list[str]:
+    def pegar_mlb_url(self, lista_url: list[str]) -> str:
         """Metodo para pegar o codigo MLB de uma URL. Faz um split com referencia do texto MLB.
 
         Args:
@@ -79,16 +79,14 @@ class PegarInfosAnuncioApi:
         Returns:
             list[str]: Lista de MLBs.
         """
-        list_temp: list = []
         lista_url: list[str] = Series(lista_url).fillna('').to_list()
         for x in lista_url:
             try:
                 mlb_id: str = x.split('MLB-')[1].split('-')[0]
                 if mlb_id.isnumeric():
-                    list_temp.append(f'MLB{mlb_id}')
+                    return f'MLB{mlb_id}'
             except IndexError:
                 pass
-        return list_temp
 
 
     def replace_caracteres(self, text: str) -> str:
@@ -105,7 +103,7 @@ class PegarInfosAnuncioApi:
         _repalce_text.remover_caracteres_especiais()
         return _repalce_text.get_texto_limpo()
 
-    def pegar_atributos_necessarios(self, _list_atributos: list[dict]):
+    def pegar_atributos_necessarios(self, _list_atributos: dict):
         """Metodo para pegar as chaves necessarias do JSON de requisicoes do MLB.
         Ou seja, ele so pega o que a gente precisa.
 
@@ -115,36 +113,51 @@ class PegarInfosAnuncioApi:
         Returns:
             _type_: Atributos buscados.
         """
-        try:
-            for key in _list_atributos.get('attributes'):
-                match key.get('id'):
-                    case 'MPN':
-                        self._atributos['mpn'] = self.replace_caracteres(
-                            key['value_name']).upper()
-                    case 'OEM':
-                        self._atributos['oem'] = self.replace_caracteres(
-                            key['value_name']).upper()
-                    case 'GTIN':
-                        self._atributos['gtin'] = self.replace_caracteres(
-                            key['value_name']).upper()
-                    case 'PART_NUMBER':
-                        self._atributos['numero_original'] = self.replace_caracteres(
-                            key['value_name']).upper()
-                    case 'SELLER_SKU':
-                        self._atributos['sku'] = self.replace_caracteres(
-                            key['value_name']).upper()
-                    case 'BRAND':
-                        self._atributos['marca'] = self.replace_caracteres(
-                            key['value_name']).upper()
-                    case _:
-                        ...
-        except TypeError:
-            return {
-                'gtin': None,
-                'mpn': None,
-                'sku': None,
-                'oem': None,
-                'marca': None,
-                'numero_original': None
-            }
+        _key: dict = {}
+        for _key in _list_atributos.get('attributes'):
+            match _key.get('id'):
+                case 'MPN':
+                    self._atributos.update(
+                        {
+                            'mpn': self.replace_caracteres(
+                                _key['value_name']).upper()
+                        }
+                    )
+                case 'OEM':
+                    self._atributos.update(
+                        {
+                            'oem': self.replace_caracteres(
+                                _key['value_name']).upper()
+                        }
+                    )
+                case 'GTIN':
+                    self._atributos.update(
+                        {
+                            'gtin': self.replace_caracteres(
+                                _key['value_name']).upper()
+                        }
+                    )
+                case 'PART_NUMBER':
+                    self._atributos.update(
+                        {
+                            'numero_original': self.replace_caracteres(
+                                _key['value_name']).upper()
+                        }
+                    )
+                case 'SELLER_SKU':
+                    self._atributos.update(
+                        {
+                            'sku': self.replace_caracteres(
+                                _key['value_name']).upper()
+                        }
+                    )
+                case 'BRAND':
+                    self._atributos.update(
+                        {
+                            'marca': self.replace_caracteres(
+                                _key['value_name']).upper()
+                        }
+                    )
+                case _:
+                    ...
         return self._atributos
