@@ -276,6 +276,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Uso
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -285,6 +296,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#processos" class="md-nav__link">
+    <span class="md-ellipsis">
+      Processos
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -310,6 +349,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#processos" class="md-nav__link">
+    <span class="md-ellipsis">
+      Processos
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -326,18 +382,25 @@
 <h1 id="uso">Uso</h1>
 <ol>
 <li>Baixe o repositorio do projeto
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span><span class="s1">&#39;repositorio&#39;</span>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/jef-loppes-reis/match-market-ads
 </code></pre></div></li>
 <li>Depedencias
 <div class="highlight"><pre><span></span><code>py<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="p">;</span>
 .venv/Scripts/activate<span class="p">;</span>
 pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>./requirements.txt
 </code></pre></div></li>
-<li>Execução
-<div class="highlight"><pre><span></span><code>py<span class="w"> </span>main.py
-</code></pre></div>
-3.1 Digite o nome ou URL da loja oficial, no terminal.</li>
 </ol>
+<h2 id="processos">Processos</h2>
+<p>-&gt; Pegar informações de uma determinada loja oficial. Passar por uma conferência de <strong>[CORRESPONDÊNCIAS]</strong>, onde o usuário vai apontar se deve ou não clonar tal produto.</p>
+<div class="highlight"><pre><span></span><code>py<span class="w"> </span>./main.py
+</code></pre></div>
+<p>-&gt; Com a lista de correspondências pronta, agora é passar por uma validação de fotos. O programa baixa as fotos de todos os anúncios apontados para clonagem, depois abrirá um <strong>[APLICATIVO]</strong> apontando tal foto e o usuário decidirá qual foto deve ir ou não para o anúncio.</p>
+<div class="highlight"><pre><span></span><code>py<span class="w"> </span>./photo_validation/get_photo_url.py<span class="w"> </span><span class="c1"># Baixar fotos</span>
+py<span class="w"> </span>./photo_validation/app.py<span class="w">           </span><span class="c1"># Conferir fotos</span>
+</code></pre></div>
+<p>-&gt; Com a lista de correspondências e suas respectivas fotos selecionadas, agora o programa deve <strong>[CLONAR]</strong> os produtos, alterando seus atributos conforme os atributos cadastrados no sistema "SIAC".</p>
+<div class="highlight"><pre><span></span><code>py<span class="w"> </span>./clonagem/uso.py<span class="w">  </span><span class="c1"># Modulo principal para clonagem</span>
+</code></pre></div>
 
 
 
