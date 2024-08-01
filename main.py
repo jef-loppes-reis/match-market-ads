@@ -95,7 +95,8 @@ class Main:
             _lista_link_anuncios_seller: list[str] = AnunciosLojaOficial(
                 _site_loja_oficial).pegar_link_anuncios()
 
-            self._df_lojas_oficiais['lista_url_anuncios'] = Series(_lista_link_anuncios_seller)
+            self._df_lojas_oficiais['lista_url_anuncios'] = Series(
+                _lista_link_anuncios_seller)
 
     def informacaoes_anuncios_api(self):
         """Método para fazer as requisições de todas as informações dos anúncios da página oficial.
@@ -123,7 +124,7 @@ class Main:
             [
                 dumps(PegarInfosAnuncioApi(_ml_interface)
                       .pegar_atributos_necessarios(loads(atts))
-                ) for atts in _df.loc[:, 'lista_infos_mlb']
+                      ) for atts in _df.loc[:, 'lista_infos_mlb']
             ]
         )
 
@@ -159,29 +160,42 @@ class Main:
                                                 _df['marca_ml'],
                                                 _df['mpn_marca_ml'],
                                                 _df.index
-                                            ),
-                                        desc='Verificando matchs Ml/SIAC: ',
-                                        colour='green', total=len(_df)
-                                ):
-                    _df.at[future.get('df_index'), 'gtin_siac'] = future.get('gtin_siac')
-                    _df.at[future.get('df_index'), 'gtin_fuzzy'] = future.get('score_gtin_before')
+                                                ),
+                                   desc='Verificando matchs Ml/SIAC: ',
+                                   colour='green', total=len(_df)
+                                   ):
+                    _df.at[future.get('df_index'), 'gtin_siac'] = future.get(
+                        'gtin_siac')
+                    _df.at[future.get('df_index'), 'gtin_fuzzy'] = future.get(
+                        'score_gtin_before')
 
-                    _df.at[future.get('df_index'), 'mpn_siac'] = future.get('mpn_siac')
-                    _df.at[future.get('df_index'), 'mpn_fuzzy'] = future.get('score_mpn_before')
+                    _df.at[future.get('df_index'), 'mpn_siac'] = future.get(
+                        'mpn_siac')
+                    _df.at[future.get('df_index'), 'mpn_fuzzy'] = future.get(
+                        'score_mpn_before')
 
-                    _df.at[future.get('df_index'), 'sku_siac'] = future.get("sku_siac")
-                    _df.at[future.get('df_index'), 'sku_fuzzy'] = future.get('score_sku_before')
+                    _df.at[future.get('df_index'), 'sku_siac'] = future.get(
+                        "sku_siac")
+                    _df.at[future.get('df_index'), 'sku_fuzzy'] = future.get(
+                        'score_sku_before')
 
-                    _df.at[future.get('df_index'), 'numero_original_siac'] = future.get('num_orig_siac')
-                    _df.at[future.get('df_index'), 'numero_original_fuzzy'] = future.get('score_num_orig_before')
+                    _df.at[future.get('df_index'), 'numero_original_siac'] = future.get(
+                        'num_orig_siac')
+                    _df.at[future.get('df_index'), 'numero_original_fuzzy'] = future.get(
+                        'score_num_orig_before')
 
-                    _df.at[future.get('df_index'), 'marca_siac'] = future.get('marca_siac')
-                    _df.at[future.get('df_index'), 'marca_fuzzy'] = future.get('score_marca_before')
+                    _df.at[future.get('df_index'), 'marca_siac'] = future.get(
+                        'marca_siac')
+                    _df.at[future.get('df_index'), 'marca_fuzzy'] = future.get(
+                        'score_marca_before')
 
-                    _df.at[future.get('df_index'), 'mpn_marca_siac'] = future.get('mpn_marca_siac')
-                    _df.at[future.get('df_index'), 'mpn_marca_fuzzy'] = future.get('score_mpn_marca_before')
+                    _df.at[future.get('df_index'), 'mpn_marca_siac'] = future.get(
+                        'mpn_marca_siac')
+                    _df.at[future.get('df_index'), 'mpn_marca_fuzzy'] = future.get(
+                        'score_mpn_marca_before')
 
-                    _df.loc[future.get('df_index'), 'soma_fuzzy'] = future.get('sum_scores')
+                    _df.loc[future.get('df_index'), 'soma_fuzzy'] = future.get(
+                        'sum_scores')
 
                 # _df = _df.loc[:, 2:]
             except KeyError as e:
