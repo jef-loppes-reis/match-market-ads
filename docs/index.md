@@ -19,7 +19,7 @@ Basicamente e identinficar se o produto e o mesmo de tal loja oficial, seguindo 
 12. [x] Criar uma planilha com os resultados acima;
 13. [x] Baixar todos os atributos do anúncio concorrente, substituir os atributos padrões como: vídeo, fotos, código referencia (SKU), marca, descrição;
 14. [x] Criar um Tkinter, para validacao das imagens;
-15. [ ] Subir as fotos validadas e ligar o anúncio;
+15. [x] Subir as fotos validadas e ligar o anúncio;
 
 ## Mermeid
 
