@@ -1,3 +1,7 @@
+%s
+
+%s
+
 CARACTERÍSTICAS DO PRODUTO:
 • Marca: %s
 • Código da peça: %s

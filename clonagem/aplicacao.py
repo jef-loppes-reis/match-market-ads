@@ -68,7 +68,6 @@ class Aplicacao:
 
 
     def venda(self, kit: bool, multiplo: int):
-        print({kit})
         if kit:
             return '1 Kit'
         return f'{multiplo} {'Unidade' if multiplo == 1 else 'Unidades'}'
@@ -88,26 +87,26 @@ class Aplicacao:
         veiculos = f'\nSERVE NOS SEGUINTES VEÍCULOS:\n(Em caso de dúvidas, perguntar no campo de perguntas.)\n\n{aplicacao_veiculos}\n\n' \
             if not isna(aplicacao_veiculos) else '\n(Em caso de dúvidas, perguntar no campo de perguntas.)\n\n'
         descricao = \
-    f'''{titulo}
-    {veiculos}
-    CARACTERÍSTICAS DO PRODUTO:
-    • Marca: {marca}
-    • Código da peça: {num_fab}
-    • Código de referência: {oems}
+f'''{titulo}
+{veiculos}
+CARACTERÍSTICAS DO PRODUTO:
+• Marca: {marca}
+• Código da peça: {num_fab}
+• Código de referência: {oems}
 
-    CONTEÚDO DA EMBALAGEM:
-    • {self.venda(kit, multiplo_venda)}
+CONTEÚDO DA EMBALAGEM:
+• {self.venda(kit, multiplo_venda)}
 
-    OBSERVAÇÃO:
-    • A Responsabilidade de confirmar a aplicação no veículo é exclusivamente do proprietário e do mecânico, uma vez que não temos acesso pessoal e visual da peça instalada.
-    • Nossos produtos tem garantia de fábrica de 3 meses. Não cobrimos má instalação ou mau uso do produto, recomendamos que a instalação seja feita por um profissional especializado.
-    • As compras realizadas em nome de Pessoa Jurídica podem estar sujeitas à cobrança de ICMS e DIFAL, conforme Protocolo ICMS 41, de 4 de Abril de 2008. Caso você tenha dúvidas sobre o percentual a ser aplicado, consulte a Cláusula Segunda, §1° do referido Protocolo.
-    • Para devolução por Defeito de Fabricação o produto deve acompanhar a Nota Fiscal de compra para sua identificação. Sem ela (Nota Fiscal), não é possível identificar o solicitante da Garantia
-    • O produto deve ser devolvido nas mesmas condições em que foi enviado (na embalagem original, sem sinais de utilização para a perfeita condição de uso do próximo comprador).
-    • Caixa (s) e Imagem (s) Ilustrativa (s), meramente comercial para efeito estético e informativo de marca e modelo do anúncio.
+OBSERVAÇÃO:
+• A Responsabilidade de confirmar a aplicação no veículo é exclusivamente do proprietário e do mecânico, uma vez que não temos acesso pessoal e visual da peça instalada.
+• Nossos produtos tem garantia de fábrica de 3 meses. Não cobrimos má instalação ou mau uso do produto, recomendamos que a instalação seja feita por um profissional especializado.
+• As compras realizadas em nome de Pessoa Jurídica podem estar sujeitas à cobrança de ICMS e DIFAL, conforme Protocolo ICMS 41, de 4 de Abril de 2008. Caso você tenha dúvidas sobre o percentual a ser aplicado, consulte a Cláusula Segunda, §1° do referido Protocolo.
+• Para devolução por Defeito de Fabricação o produto deve acompanhar a Nota Fiscal de compra para sua identificação. Sem ela (Nota Fiscal), não é possível identificar o solicitante da Garantia
+• O produto deve ser devolvido nas mesmas condições em que foi enviado (na embalagem original, sem sinais de utilização para a perfeita condição de uso do próximo comprador).
+• Caixa (s) e Imagem (s) Ilustrativa (s), meramente comercial para efeito estético e informativo de marca e modelo do anúncio.
 
-    NÚMERO INTERNO:
-    • {codpro}'''
+NÚMERO INTERNO:
+• {codpro}'''
         return descricao
 
 

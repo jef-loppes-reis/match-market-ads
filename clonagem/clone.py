@@ -1,8 +1,9 @@
 from json import load, dumps
 from re import sub
+from time import sleep
 
 from ecomm import Postgres
-from httpx import Client, Response
+from httpx import Client, Response, ConnectTimeout
 from rich import print as rprint
 from pandas import DataFrame, isna
 
@@ -133,9 +134,9 @@ class Clonador:
                                 'id': 'OEM',
                                 'name': 'Código OEM',
                                 'value_name': sub(
-                                    r"[[\]']",
-                                    '',
-                                    str(self.df_siac_filter.loc[:,
+                                    pattern=r"[[\]']",
+                                    repl='',
+                                    string=str(self.df_siac_filter.loc[:,
                                         'lista_oem'].to_list())
                                 )
                             }
@@ -194,17 +195,23 @@ class Clonador:
         try:
             with Client() as client:
                 for img in list_path_img:
-                    with open(img, 'rb') as photo_file:
-                        _res_photo: Response = client.post(
-                            url=self._base_url_upload_photos,
-                            headers=self._headers,
-                            files={
-                                'file': photo_file
-                            }
-                        )
-                        lista_id_imgs.append(
-                            {'id': _res_photo.json().get('id')}
-                        )
+                    try:
+                        with open(img, 'rb') as photo_file:
+                            _res_photo: Response = client.post(
+                                url=self._base_url_upload_photos,
+                                headers=self._headers,
+                                files={
+                                    'file': photo_file
+                                }
+                            )
+                            if _res_photo.json().get('id') is None:
+                                continue
+                            lista_id_imgs.append(
+                                {'id': _res_photo.json().get('id')}
+                            )
+                    except FileNotFoundError:
+                        rprint(f'Foto nao encontrada [{img}]')
+                        continue
 
             return lista_id_imgs
         except FileNotFoundError as e:
@@ -255,8 +262,6 @@ class Clonador:
 
 
     def gerar_payload_cadastro(self, list_path_img: list[str], sku: str):
-        rprint(self.corpo_clonagem)
-        rprint(self._res_mlb)
         for key, _ in self.corpo_clonagem.items():
             match key:
                 case 'title':
@@ -319,12 +324,35 @@ class Clonador:
             )
         return _res_descricao
 
-    def cadastro(self) -> Response:
+    def cadastro(self) -> dict:
         with Client() as client:
-            return client.post(
-                url=self._base_url,
-                data=dumps(self.corpo_clonagem)
-            )
+            _tentativas_cadastro = 0
+            while True:
+                if _tentativas_cadastro > 9:
+                    return {'id': None}
+                try:
+                    # _copia_corpo_clonagem: dict = self.corpo_clonagem
+                    # _copia_corpo_clonagem.pop('description')
+                    with open('teste.json', 'w', encoding='utf-8') as fp:
+                        fp.write(dumps(self.corpo_clonagem, ensure_ascii=False))
+                    rprint(self.corpo_clonagem)
+                    _res_cadastro: Response = client.post(
+                        url='https://api.mercadolibre.com/items',
+                        headers=self._headers,
+                        json=dumps(self.corpo_clonagem)
+                    )
+                    if _res_cadastro.status_code in [429, 500]:
+                        _tentativas_cadastro += 1
+                        sleep(5)
+                        continue
+                    return _res_cadastro.json()
+                except ConnectionError:
+                    sleep(10)
+                    continue
+                except ConnectTimeout:
+                    sleep(10)
+                    continue
+
 
     def main(self):
         self.read_product_siac()
