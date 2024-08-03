@@ -219,46 +219,76 @@ class Clonador:
         except Exception as e:
             rprint(e)
 
+    def post_compatibilidades(self,
+                              payload: dict[str, str],
+                              http_client: Client,
+                              item_id_novo: str
+                            ) -> None | Response:
+        _tentativas: int = 0
+        while True:
+            if _tentativas > 14:
+                return
+            _res: Response = http_client.post(
+                url=f'/{item_id_novo}/compatibilities',
+                headers=self._headers,
+                data=dumps(payload)
+            )
+            if _res.status_code in [429, 500]:
+                sleep(3)
+                _tentativas += 1
+                continue
+            return _res
+
     def compatibilidades(self, item_id_ml_clone: str, item_id_novo: str,
                          view_compati: bool = False) -> Response | int:
         _lista_aplicacoes = []
         _corpo_compatibilidades = self._corpo_compatibilidades_default
 
-        with Client(base_url=self._base_url) as client:
-            _res_compatibilidades = client.get(
-                url=f'/{item_id_ml_clone}/compatibilities',
-                headers=self._headers
-            )
+        while True:
+            with Client(base_url=self._base_url) as client:
+                _res_compatibilidades: Response = client.get(
+                    url=f'/{item_id_ml_clone}/compatibilities',
+                    headers=self._headers
+                )
 
-            if view_compati:
-                return _res_compatibilidades
+                if _res_compatibilidades.status_code in [429, 500]:
+                    sleep(3)
+                    continue
 
-            for group_keys in _res_compatibilidades.json().get('products'):
-                # pprint(group_keys)
-                for key in group_keys:
-                    match key:
-                        case 'catalog_product_id':
-                            _corpo_compatibilidades.update(
-                                {
-                                    'id': group_keys.get(key)
-                                }
-                            )
-                        case 'catalog_product_name':
-                            _corpo_compatibilidades.update(
-                                {
-                                    'note': group_keys.get(key)
-                                }
-                            )
-                _lista_aplicacoes.append(_corpo_compatibilidades)
-                _corpo_compatibilidades = self._corpo_compatibilidades_default
+                if view_compati:
+                    return _res_compatibilidades
 
-            created_compatibilities_count: int = client.post(
-                url=f'/{item_id_novo}/compatibilities',
-                headers=self._headers,
-                data=dumps({'products': _lista_aplicacoes})
-            ).json().get('created_compatibilities_count')
+                for group_keys in _res_compatibilidades.json().get('products'):
+                    # pprint(group_keys)
+                    for key in group_keys:
+                        match key:
+                            case 'catalog_product_id':
+                                _corpo_compatibilidades.update(
+                                    {
+                                        'id': group_keys.get(key)
+                                    }
+                                )
+                            case 'catalog_product_name':
+                                _corpo_compatibilidades.update(
+                                    {
+                                        'note': group_keys.get(key)
+                                    }
+                                )
+                    _lista_aplicacoes.append(_corpo_compatibilidades)
+                    _corpo_compatibilidades = self._corpo_compatibilidades_default
 
-            return created_compatibilities_count
+
+                created_compatibilities_count: None | Response = (
+                    self.post_compatibilidades(
+                        payload={'products': _lista_aplicacoes},
+                        http_client=client,
+                        item_id_novo=item_id_novo
+                    )
+                )
+
+                if not created_compatibilities_count is None:
+                    return created_compatibilities_count.json().get('created_compatibilities_count')
+                return 0
 
 
     def gerar_payload_cadastro(self, list_path_img: list[str], sku: str):
