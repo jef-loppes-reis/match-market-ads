@@ -58,6 +58,7 @@ class Main:
         "clona": "str"
     }
     _nome_loja = None
+    _nome_linha = None
     _df_lojas_oficiais: DataFrame = DataFrame(
         columns=[
             "nome_loja_oficial",
@@ -78,7 +79,9 @@ class Main:
         entrada = None
         _url_loja_oficial = None
         rprint('[bright_yellow]Digite o nome da loja:[/bright_yellow]')
-        self._nome_loja: str = input().upper()
+        self._nome_loja: str = input().lower()
+        rprint('[bright_yellow]Digite o nome da linha de produtos:[/bright_yellow]')
+        self._nome_linha: str = input().lower()
         rprint('[bright_yellow]Digite o link da pagina de anuncios:[/bright_yellow]')
         entrada: str = input()
         _url_loja_oficial = entrada
@@ -214,4 +217,5 @@ if __name__ == "__main__":
     main: Main = Main()
     main.infos_lojas_oficiais()
     main.informacaoes_anuncios_api()
-    main.get_infos_fuzzy()
+    main._df_infos_mlb.to_excel('teste.xlsx')
+    # main.get_infos_fuzzy()
