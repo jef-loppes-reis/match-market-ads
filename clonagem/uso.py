@@ -1,5 +1,6 @@
 from json import load, dumps
 from os import path, mkdir
+from re import sub
 
 from aplicacao import Aplicacao
 from clone import Clonador
@@ -24,7 +25,7 @@ def get_number_photo(lista_name_photo: str) -> list[str]:
 ML_INTERFACE: MLInterface = MLInterface(1)
 HEADERS: dict = ML_INTERFACE._headers()
 CAMINHO_FOTOS: str = '../photo_validation/out_files_photos/%s'
-NOME_LOJA: str = 'sampel'
+NOME_LOJA: str = 'takao'
 PATH_LOJA: str = f'./out/{NOME_LOJA}'
 
 if not path.exists(PATH_LOJA):
@@ -34,16 +35,17 @@ with open('./data/sale_terms.json', 'r', encoding='utf-8') as fp:
     sale_terms = load(fp)
 
 df_photos: DataFrame = read_feather(
-    f'../data/conferencia_fotos_{NOME_LOJA}.feather')
+    f'../temp/conferencia_fotos_{NOME_LOJA}.feather')
 df_photos = df_photos.query('~mlb.isna()').reset_index(drop=True).copy()
 df_photos['number_photo'] = get_number_photo(
     df_photos.path_file_photo.fillna('0'))
 
-df_clona_genuino = read_excel(f'../data/{NOME_LOJA}.xlsx', dtype=str)
+df_clona_genuino = read_excel(f'../data/planilhas_primeiro_processo/{NOME_LOJA}.xlsx', dtype=str)
 df_clona_genuino = df_clona_genuino.set_axis(
     df_clona_genuino.columns.str.lower(), axis=1).copy()
-df_clona_genuino.loc[:,
-                        'sku_certo'] = df_clona_genuino.sku_certo.str.strip()
+df_clona_genuino.loc[:, 'sku_certo'] = list(
+    map(lambda x: sub(r'\s', '', str(x)), df_clona_genuino.loc[:, 'sku_certo'])
+)
 
 df_clona_copy: DataFrame = merge(
     df_clona_genuino,
@@ -108,7 +110,6 @@ for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'
         clonagem.read_df_siac_filter(
             codpro_produto=codpro.strip()
         )
-        clonagem.df_siac_filter.loc[0]
     except KeyError:
         rprint(f'O MLB {mlb} selecionado, nao tem dados com esse codpro {codpro}, estou pulando ele.')
         continue
@@ -142,7 +143,7 @@ for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'
 
     # retorno_cadastro: dict = clonagem.cadastro()
     if clonagem.corpo_clonagem.get('pictures') is None:
-        rprint(f'O MLB {mlb} selecionado nao tem foto aprovado, estou passando ele.')
+        rprint(f'O MLB {mlb} selecionado nao tem foto aprovada, estou passando ele.')
         continue
 
     try:
@@ -157,7 +158,7 @@ for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'
     compati: int = clonagem.compatibilidades(
         item_id_ml_clone=mlb,
         item_id_novo=retorno_cadastro.get('id'),
-        view_compati=True
+        view_compati=False
     )
 
     retorno_descricao: Response = clonagem.descricao(
