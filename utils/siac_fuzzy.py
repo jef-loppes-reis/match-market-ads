@@ -10,20 +10,9 @@ class SiacFuzzy:
 
     _score_defualt = 59
 
-    with Postgres() as db:
-        _df_siac: DataFrame = db.query('''
-                SELECT produto.produto as titulo,
-                    produto.codpro as codigo_interno,
-                    produto.codpro as sku,
-                    produto.num_fab as mpn,
-                    produto.fantasia as marca,
-                    prd_gtin.cd_barras as codigo_barras,
-                    original.num_orig as oem
-                FROM "D-1".produto
-                LEFT JOIN "D-1".prd_gtin ON produto.codpro = prd_gtin.cd_produto
-                LEFT JOIN "D-1".original ON produto.num_orig = original.nu_origina
-                ORDER BY dt_cadast DESC;
-                ''')
+    with open('../data/sql/produto_siac.sql', 'r', encoding='utf-8') as fp:
+        with Postgres() as db:
+            _df_siac: DataFrame = db.query(fp.read())
 
     def __init__(self, df_infos_mlb: DataFrame, columns: dict) -> None:
         self._df_infos_mlb: DataFrame = df_infos_mlb
@@ -31,12 +20,10 @@ class SiacFuzzy:
 
     def created_new_dataframe(self) -> DataFrame:
         _df = DataFrame(columns=self._padrao_colunas.keys())
+        id_att: dict = {}
 
-        # from rich import print as pprint
-        # pprint(self._df_infos_mlb.lista_mlbs.values[0])
-        # pprint(self._df_infos_mlb.lista_url_anuncios.values[0])
-
-        list_atts = [loads(atts) for atts in self._df_infos_mlb.loc[:, 'lista_att_necessarios']]
+        list_atts = [loads(atts) for atts in self._df_infos_mlb.loc[
+            :, 'lista_att_necessarios']]
 
         _df['lista_url_anuncios'] = self._df_infos_mlb.lista_url_anuncios
 
@@ -50,9 +37,11 @@ class SiacFuzzy:
 
         _df.loc[:, 'mpn_ml'] = [id_att.get('mpn') for id_att in list_atts]
 
-        _df.loc[:, 'numero_original_ml'] = [id_att.get('numero_original') for id_att in list_atts]
+        _df.loc[:, 'numero_original_ml'] = [id_att.get(
+            'numero_original') for id_att in list_atts]
 
-        _df.loc[:, 'mpn_marca_ml'] = [f'{id_att.get('mpn')}_{id_att.get('marca')}' for id_att in list_atts]
+        _df.loc[:, 'mpn_marca_ml'] = [f'{id_att.get('mpn')}_{id_att.get(
+            'marca')}' for id_att in list_atts]
 
         return _df
 
@@ -84,12 +73,24 @@ class SiacFuzzy:
         for idx in self._df_siac.index:
             _row_siac: DataFrame = self._df_siac.loc[idx].copy()
 
-            similarity_score_gtin_after: int = fuzz.ratio(gtin, _row_siac['codigo_barras'])
-            similarity_score_mpn_after: int = fuzz.ratio(mpn, _row_siac['mpn'])
-            similarity_score_sku_after: int = fuzz.ratio(sku, _row_siac['mpn'])
-            similarity_score_num_orig_after: int = fuzz.ratio(numero_original, _row_siac['oem'])
-            similarity_score_marca_after: int = fuzz.ratio(marca, _row_siac['marca'])
-            similarity_score_mpn_marca_after: int = fuzz.ratio(mpn_marca, f'{_row_siac['mpn']}_{_row_siac['marca']}')
+            similarity_score_gtin_after: int = fuzz.ratio(
+                gtin, _row_siac['codigo_barras']
+            )
+            similarity_score_mpn_after: int = fuzz.ratio(
+                mpn, _row_siac['mpn']
+            )
+            similarity_score_sku_after: int = fuzz.ratio(
+                sku, _row_siac['mpn']
+            )
+            similarity_score_num_orig_after: int = fuzz.ratio(
+                numero_original, _row_siac['oem']
+            )
+            similarity_score_marca_after: int = fuzz.ratio(
+                marca, _row_siac['marca']
+            )
+            similarity_score_mpn_marca_after: int = fuzz.ratio(
+                mpn_marca, f'{_row_siac['mpn']}_{_row_siac['marca']}'
+            )
 
             if similarity_score_gtin_before < similarity_score_gtin_after:
                 similarity_score_gtin_before = similarity_score_gtin_after

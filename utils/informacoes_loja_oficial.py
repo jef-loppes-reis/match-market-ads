@@ -14,6 +14,14 @@ class InfosLojaOficial:
         self._driver_seller = driver_sellers
 
     def get_infos_seller(self) -> tuple[list[str]]:
+        """
+        get_infos_seller Pega os links de cada anuncio de uma determinada pagina.
+
+        _extended_summary_
+
+        Returns:
+            tuple[list[str]]: 
+        """
 
         _name_seller_official_list: list = []
         _link_seller_official_list: list = []

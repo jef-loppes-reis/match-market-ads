@@ -3,7 +3,7 @@
 Returns:
     _type_: _description_
 """
-from os import path, mkdir, system
+from os import path, mkdir
 from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
 
@@ -64,6 +64,8 @@ class Main:
             "nome_loja_oficial",
             "url_loja_oficial",
             "lista_url_anuncios",
+            "lista_tag_mais_vendido",
+            "lista_tag_avaliacao",
             "lista_mlbs"
         ]
     )
@@ -93,11 +95,19 @@ class Main:
                 'html.parser'
             )
 
-            _lista_link_anuncios_seller: list[str] = AnunciosLojaOficial(
+            _lista_link_anuncios_seller: dict[str, str | float] = AnunciosLojaOficial(
                 _site_loja_oficial).pegar_link_anuncios()
 
             self._df_lojas_oficiais['lista_url_anuncios'] = Series(
-                _lista_link_anuncios_seller)
+                _lista_link_anuncios_seller.get('lista_link_anuncios')
+            )
+            self._df_lojas_oficiais['lista_tag_mais_vendido'] = Series(
+                _lista_link_anuncios_seller.get('lista_tag_mais_vendido')
+            )
+            self._df_lojas_oficiais['lista_tag_avaliacao'] = Series(
+                _lista_link_anuncios_seller.get('lista_tag_avaliacao')
+            )
+        rprint(self._df_lojas_oficiais)
 
     def informacaoes_anuncios_api(self):
         """Método para fazer as requisições de todas as informações dos anúncios da página oficial.
@@ -217,5 +227,5 @@ if __name__ == "__main__":
     main: Main = Main()
     main.infos_lojas_oficiais()
     main.informacaoes_anuncios_api()
-    main._df_infos_mlb.to_excel('teste.xlsx')
-    # main.get_infos_fuzzy()
+    main._df_infos_mlb.to_excel('resultados_mais_vendidos_avaliacoes.xlsx')
+    main.get_infos_fuzzy()
