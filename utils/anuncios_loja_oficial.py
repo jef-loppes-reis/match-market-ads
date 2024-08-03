@@ -38,12 +38,12 @@ class AnunciosLojaOficial:
         # Entra em cada pagina, e pega o link dos anuncios.
         lista_link_anuncios: list = []
         with Client() as _client:
+            # Iteracao sobre a quantidade maxima de paginas = 10
             for link_pagina in lista_paginas:
                 # print(link_pagina)
                 driver_anuncios: BeautifulSoup = self.entrar_pagina(client=_client, url=link_pagina)
                 for lista_anuncios in driver_anuncios.find_all(self._anuncios[0], self._anuncios[1]):
                     lista_link_anuncios.extend([anuncio.find('a')['href'] for anuncio in lista_anuncios])
-                break
         return lista_link_anuncios
 
 
