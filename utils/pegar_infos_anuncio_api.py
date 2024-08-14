@@ -24,7 +24,8 @@ class PegarInfosAnuncioApi:
         'sku': None,
         'oem': None,
         'marca': None,
-        'numero_original': None
+        'numero_original': None,
+        'produto': None,
     }
 
     _base_url = "https://api.mercadolibre.com/items/%s/?include_attributes=all"
@@ -103,7 +104,7 @@ class PegarInfosAnuncioApi:
         _repalce_text.remover_caracteres_especiais()
         return _repalce_text.get_texto_limpo()
 
-    def pegar_atributos_necessarios(self, _list_atributos: dict):
+    def pegar_atributos_necessarios(self, _list_atributos: dict) -> dict:
         """Metodo para pegar as chaves necessarias do JSON de requisicoes do MLB.
         Ou seja, ele so pega o que a gente precisa.
 
@@ -114,6 +115,9 @@ class PegarInfosAnuncioApi:
             _type_: Atributos buscados.
         """
         _key: dict = {}
+        self._atributos.update({
+            'produto': _list_atributos.get('title')
+        })
         for _key in _list_atributos.get('attributes'):
             match _key.get('id'):
                 case 'MPN':

@@ -33,9 +33,14 @@ class Main:
         "lista_infos_mlb": "str",
         "lista_att_necessarios": "str",
         "mlb": "str",
+        "lista_tag_mais_vendido": "str",
+        "lista_tag_avaliacao": "str",
         "gtin_ml": "str",
         "gtin_siac": "str",
         "gtin_fuzzy": "float",
+        "produto_ml": "str",
+        "produto_siac": "str",
+        "produto_fuzzy": "str",
         "mpn_ml": "str",
         "mpn_siac": "str",
         "mpn_fuzzy": "float",
@@ -133,10 +138,11 @@ class Main:
         )
         _df.loc[:, 'lista_infos_mlb'] = Series(_lista_infos_mlb_res)
 
+        rprint(_df.query('lista_infos_mlb.isna()'))
         _lista_att_necessarios_res: list[dict] = [
                 dumps(PegarInfosAnuncioApi(_ml_interface)
                       .pegar_atributos_necessarios(loads(atts))
-                      ) for atts in _df.loc[:, 'lista_infos_mlb']
+                ) for atts in _df.loc[:, 'lista_infos_mlb']
             ]
         _df.at[:, 'lista_att_necessarios'] = Series(_lista_att_necessarios_res)
 
@@ -152,15 +158,18 @@ class Main:
         if not path.exists(_path_fuzzys):
             mkdir(_path_fuzzys)
 
-        _df: DataFrame = SiacFuzzy(
-            self._df_infos_mlb,
-            self._columns_default
-        ).created_new_dataframe()
-
         _siac_fuzzy: SiacFuzzy = SiacFuzzy(
             self._df_infos_mlb,
-            self._columns_default
+            self._columns_default,
+            './data/sql/produto_siac.sql'
         )
+
+        _siac_fuzzy.read_db()
+
+        _df: DataFrame = _siac_fuzzy.created_new_dataframe()
+
+        _df.loc[:, 'lista_tag_mais_vendido'] = self._df_infos_mlb.loc[:, 'lista_tag_mais_vendido'].copy()
+        _df.loc[:, 'lista_tag_avaliacao'] = self._df_infos_mlb.loc[:, 'lista_tag_avaliacao'].copy()
 
         with ProcessPoolExecutor(max_workers=12) as executor:
             for future in tqdm(executor.map(_siac_fuzzy.fuzzy_results,
@@ -170,6 +179,7 @@ class Main:
                                             _df['numero_original_ml'],
                                             _df['marca_ml'],
                                             _df['mpn_marca_ml'],
+                                            _df['produto_ml'],
                                             _df.index
                                             ),
                                 desc='Verificando matchs Ml/SIAC: ',
@@ -204,16 +214,21 @@ class Main:
                     'mpn_marca_siac')
                 _df.at[future.get('df_index'), 'mpn_marca_fuzzy'] = future.get(
                     'score_mpn_marca_before')
+                
+                _df.at[future.get('df_index'), 'produto_siac'] = future.get(
+                    'produto_siac')
+                _df.at[future.get('df_index'), 'produto_fuzzy'] = future.get(
+                    'score_produto_before')
 
                 _df.loc[future.get('df_index'), 'soma_fuzzy'] = future.get(
                     'sum_scores')
 
 
             _df.sort_values('soma_fuzzy', ascending=False).to_feather(
-                f'{_path_fuzzys}/df_{self._nome_loja}_fuzzy'
+                f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy'
             )
             _df.sort_values('soma_fuzzy', ascending=False).to_excel(
-                f'{_path_fuzzys}/df_{self._nome_loja}_fuzzy.xlsx'
+                f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy.xlsx'
             )
 
 
