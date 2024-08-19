@@ -17,6 +17,7 @@ from ecomm import MLInterface
 from utils.anuncios_loja_oficial import AnunciosLojaOficial
 from utils.pegar_infos_anuncio_api import PegarInfosAnuncioApi
 from utils.siac_fuzzy import SiacFuzzy
+from utils.get_fuzzy_grupo import GetFuzzyGrupos
 
 
 class Main:
@@ -78,25 +79,42 @@ class Main:
     _df_infos_mlb = DataFrame()
 
     _siac_fuzzy = None
+    _url_loja_oficial = None
 
     def __init__(self) -> None:
         self._ml: MLInterface = MLInterface
 
-    def infos_lojas_oficiais(self):
+    def reset_df_infos(self):
+        self._df_infos_mlb = DataFrame().copy()
+        self._df_lojas_oficiais: DataFrame = DataFrame(
+            columns=[
+                "nome_loja_oficial",
+                "url_loja_oficial",
+                "lista_url_anuncios",
+                "lista_tag_mais_vendido",
+                "lista_tag_avaliacao",
+                "lista_mlbs"
+            ]
+        ).copy()
+
+    def infos_lojas_oficiais(self, loja: str, linha: str, url: str):
         entrada = None
-        _url_loja_oficial = None
-        rprint('[bright_yellow]Digite o nome da loja:[/bright_yellow]')
-        self._nome_loja: str = input().lower()
-        rprint('[bright_yellow]Digite o nome da linha de produtos:[/bright_yellow]')
-        self._nome_linha: str = input().lower()
-        rprint('[bright_yellow]Digite o link da pagina de anuncios:[/bright_yellow]')
-        entrada: str = input()
-        _url_loja_oficial = entrada
+        # rprint('[bright_yellow]Digite o nome da loja:[/bright_yellow]')
+        # self._nome_loja: str = input().lower()
+        # rprint('[bright_yellow]Digite o nome da linha de produtos:[/bright_yellow]')
+        # self._nome_linha: str = input().lower()
+        # rprint('[bright_yellow]Digite o link da pagina de anuncios:[/bright_yellow]')
+        # entrada: str = input()
+        # self._url_loja_oficial = entrada
+        self._nome_loja: str = loja
+        self._nome_linha: str = linha
+        self._url_loja_oficial: str = url
 
         with Client() as _client:
 
+            rprint({'Link loja': self._url_loja_oficial})
             _site_loja_oficial: bs4.BeautifulSoup = bs4.BeautifulSoup(
-                _client.get(_url_loja_oficial, timeout=None).content,
+                _client.get(self._url_loja_oficial, timeout=None).content,
                 'html.parser'
             )
 
@@ -112,7 +130,6 @@ class Main:
             self._df_lojas_oficiais['lista_tag_avaliacao'] = Series(
                 _lista_link_anuncios_seller.get('lista_tag_avaliacao')
             )
-        rprint(self._df_lojas_oficiais)
 
     def informacaoes_anuncios_api(self):
         """Método para fazer as requisições de todas as informações dos anúncios da página oficial.
@@ -138,17 +155,17 @@ class Main:
         )
         _df.loc[:, 'lista_infos_mlb'] = Series(_lista_infos_mlb_res)
 
-        rprint(_df.query('lista_infos_mlb.isna()'))
-        _lista_att_necessarios_res: list[dict] = [
-                dumps(PegarInfosAnuncioApi(_ml_interface)
-                      .pegar_atributos_necessarios(loads(atts))
-                ) for atts in _df.loc[:, 'lista_infos_mlb']
-            ]
+        _lista_att_necessarios_res: list[dict] = []
+        for atts in _df.loc[:, 'lista_infos_mlb']:
+            dict_atts: dict = PegarInfosAnuncioApi(_ml_interface).pegar_atributos_necessarios(loads(atts))
+            _lista_att_necessarios_res.append(dumps(dict_atts))
+
         _df.at[:, 'lista_att_necessarios'] = Series(_lista_att_necessarios_res)
 
-        # _df.to_excel('teste_informacoes_anuncios.xlsx')
-
-        self._df_infos_mlb: DataFrame = _df.reset_index(drop=True).copy()
+        self._df_infos_mlb: DataFrame = (
+            _df
+            .reset_index(drop=True).copy()
+        )
 
     def get_infos_fuzzy(self):
         """Metodo para criar uma lista de matchs com a biblioteca Fuzzy. Comparando os produtos
@@ -168,10 +185,14 @@ class Main:
 
         _df: DataFrame = _siac_fuzzy.created_new_dataframe()
 
-        _df.loc[:, 'lista_tag_mais_vendido'] = self._df_infos_mlb.loc[:, 'lista_tag_mais_vendido'].copy()
-        _df.loc[:, 'lista_tag_avaliacao'] = self._df_infos_mlb.loc[:, 'lista_tag_avaliacao'].copy()
+        _df.loc[:, 'lista_tag_mais_vendido'] = (
+            self._df_infos_mlb.loc[:,'lista_tag_mais_vendido'].copy()
+        )
+        _df.loc[:, 'lista_tag_avaliacao'] = (
+            self._df_infos_mlb.loc[:, 'lista_tag_avaliacao'].copy()
+        )
 
-        with ProcessPoolExecutor(max_workers=12) as executor:
+        with ProcessPoolExecutor(max_workers=None) as executor:
             for future in tqdm(executor.map(_siac_fuzzy.fuzzy_results,
                                             _df['gtin_ml'],
                                             _df['mpn_ml'],
@@ -234,13 +255,38 @@ class Main:
 
 if __name__ == "__main__":
 
+    from re import sub
+
     PATH_HERE = path.dirname(__file__)
 
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
+    MARCA: str = 'BOSCH'
+
+    grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
+    df_grupos: DataFrame = grupos.main()
+    # rprint(df_grupos)
+    grup: str = ''
     main: Main = Main()
-    main.infos_lojas_oficiais()
-    main.informacaoes_anuncios_api()
-    main._df_infos_mlb.to_excel('resultados_mais_vendidos_avaliacoes.xlsx')
-    main.get_infos_fuzzy()
+    for grup in tqdm(df_grupos.grupo_subgrupo,
+                     desc=f'Grupos da {MARCA}.: ',
+                     colour='yellow', total=len(df_grupos)):
+        rprint(f'\n[yellow]Grupo {grup}[/yellow]')
+        _group: str = sub(r'\s', '+', grup.lower())
+        main.reset_df_infos()
+        try:
+            main.infos_lojas_oficiais(
+                loja=MARCA.lower(),
+                linha=grup.lower(),
+                # url=f'https://lista.mercadolivre.com.br/{_group.replace('+', '-')}_Loja_bosch-autopecas_NoIndex_True#D[A:{_group},on]'
+                url=f'https://lista.mercadolivre.com.br/{_group.replace('+', '-')}_Loja_bosch-autopecas'
+            )
+            if main._df_lojas_oficiais.empty:
+                rprint('Data Frame vazio!')
+                continue
+            main.informacaoes_anuncios_api()
+            main.get_infos_fuzzy()
+        except Exception as e:
+            rprint(e)
+            continue

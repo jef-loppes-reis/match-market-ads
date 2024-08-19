@@ -7,6 +7,7 @@ from ecomm import MLInterface
 from httpx import Client, ReadTimeout, ConnectTimeout
 from pandas import read_feather, Series
 from tqdm import tqdm
+from rich import print as rprint
 
 from utils.replace_char_spec import ReplaceCaract
 
@@ -45,19 +46,33 @@ class PegarInfosAnuncioApi:
         """
         lista_res: list = []
         with Client() as client:
-            for mlb in tqdm(lista_mlbs, desc='Pegando informacoes na API: '):
+            for mlb in tqdm(iterable=lista_mlbs,
+                            desc='Pegando informacoes na API: ',
+                            colour='blue'):
                 tentativas: int = 0
                 while True:
                     if tentativas > 9:
-                        print({mlb: f'Tentativas: {tentativas}'})
+                        rprint({mlb: f'Tentativas: {tentativas}'})
                         break
                     try:
-                        _res = client.get(url=self._base_url%mlb, headers=self._headers)
+                        _res = client.get(
+                            url=self._base_url%mlb, 
+                            headers=self._headers
+                        )
                         if _res.status_code in [429, 500]:
-                            print({mlb: f'status_code: {_res.status_code} | tentativas: {tentativas}'})
+                            rprint(
+                                {
+                                    mlb: f'status_code: {_res.status_code} | tentativas: {tentativas}'
+                                }
+                            )
                             sleep(1)
                             tentativas += 1
                             continue
+                        if _res.status_code in [400, 404]:
+                            rprint(
+                                self._base_url%mlb,
+                                _res.json()
+                            )
                         lista_res.append(dumps(_res.json()))
                         break
                     except ReadTimeout:
@@ -66,7 +81,7 @@ class PegarInfosAnuncioApi:
                         sleep(10)
                         continue
                     except ConnectTimeout:
-                        print({mlb: f'TimeOut | tentativas: {tentativas}'})
+                        rprint({mlb: f'TimeOut | tentativas: {tentativas}'})
                         sleep(10)
                         continue
         return lista_res
@@ -80,14 +95,12 @@ class PegarInfosAnuncioApi:
         Returns:
             list[str]: Lista de MLBs.
         """
-        lista_url: list[str] = Series(lista_url).fillna('').to_list()
+        lista_url: list[str] = Series(lista_url).to_list()
         for x in lista_url:
-            try:
-                mlb_id: str = x.split('MLB-')[1].split('-')[0]
-                if mlb_id.isnumeric():
-                    return f'MLB{mlb_id}'
-            except IndexError:
-                pass
+            mlb_id: str = x.split('MLB-')[1].split('-')[0]
+            if mlb_id.isnumeric():
+                return f'MLB{mlb_id}'
+
 
 
     def replace_caracteres(self, text: str) -> str:
