@@ -166,7 +166,7 @@ class AnunciosLojaOficial:
                             ) if not _tag_nota_avaliacao is None else 0.0
                         lista_tag_avaliacao.append(_tag_nota_avaliacao_value)
                     num_page+=1
-                # break
+                break
         return {
             'lista_link_anuncios': lista_link_anuncios,
             'lista_tag_mais_vendido': lista_tag_mais_vendido,

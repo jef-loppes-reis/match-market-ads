@@ -261,14 +261,15 @@ class Main:
                 f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy.xlsx'
             )
 
-    def juntar_resultados(self) -> DataFrame:
-        __arquivos: list[str] = listdir('./fuzzys/bosch')
+    def juntar_resultados(self, marca: str) -> DataFrame:
+        marca: str = marca.lower()
+        __arquivos: list[str] = listdir(f'./fuzzys/{marca}')
         __df_copy: DataFrame = DataFrame()
         __here: str = path.dirname(__file__)
         for arquivo in tqdm(__arquivos, desc='Juntando resultados: '):
             if not arquivo.endswith('xlsx'):
                 _df: DataFrame = read_feather(path.join(
-                    __here, 'fuzzys','bosch', arquivo)).copy()
+                    __here, 'fuzzys', marca, arquivo)).copy()
                 __df_copy: DataFrame = concat([__df_copy, _df])
         return __df_copy
 
@@ -287,7 +288,7 @@ if __name__ == "__main__":
     grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
     main: Main = Main()
 
-    df_grupos: DataFrame = grupos.main()
+    df_grupos: DataFrame = grupos.main().head(10)
     grup: str = ''
 
     for grup in tqdm(df_grupos.grupo_subgrupo,
@@ -303,13 +304,11 @@ if __name__ == "__main__":
                 url=f'https://lista.mercadolivre.com.br/{_group.replace(
                     '+', '-')}_Loja_bosch-autopecas'
             )
-            # if main._df_lojas_oficiais.empty:
-            #     rprint('Data Frame vazio!')
-            #     continue
             main.informacaoes_anuncios_api()
             main.get_infos_fuzzy()
         except Exception as e:
             rprint(e)
             continue
 
-    main.juntar_resultados().to_excel(f'total_produtos_{MARCA.lower()}.xlsx')
+    main.juntar_resultados(marca=MARCA).to_excel(
+        f'total_produtos_{MARCA.lower()}.xlsx')
