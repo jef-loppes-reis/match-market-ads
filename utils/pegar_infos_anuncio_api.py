@@ -2,6 +2,7 @@
 from os import system
 from json import dumps
 from time import sleep
+from re import findall
 
 from ecomm import MLInterface
 from httpx import Client, ReadTimeout, ConnectTimeout
@@ -56,7 +57,7 @@ class PegarInfosAnuncioApi:
                         break
                     try:
                         _res = client.get(
-                            url=self._base_url%mlb, 
+                            url=self._base_url%mlb,
                             headers=self._headers
                         )
                         if _res.status_code in [429, 500]:
@@ -86,7 +87,7 @@ class PegarInfosAnuncioApi:
                         continue
         return lista_res
 
-    def pegar_mlb_url(self, lista_url: list[str]) -> str:
+    def pegar_mlb_url(self, lista_url: list[str]) -> str | None:
         """Metodo para pegar o codigo MLB de uma URL. Faz um split com referencia do texto MLB.
 
         Args:
@@ -96,10 +97,12 @@ class PegarInfosAnuncioApi:
             list[str]: Lista de MLBs.
         """
         lista_url: list[str] = Series(lista_url).to_list()
-        for x in lista_url:
-            mlb_id: str = x.split('MLB-')[1].split('-')[0]
-            if mlb_id.isnumeric():
-                return f'MLB{mlb_id}'
+        for url in lista_url:
+            cod_mlb: str = findall(pattern=r'MLB-\d+|MLB\d+', string=url)
+            print(cod_mlb)
+            if len(cod_mlb) > 0:
+                return f'{cod_mlb[0].replace('-','')}'
+
 
 
 
@@ -131,6 +134,10 @@ class PegarInfosAnuncioApi:
         self._atributos.update({
             'produto': _list_atributos.get('title')
         })
+        if _list_atributos.get('attributes') is None:
+            for key, _ in self._atributos.items():
+                self._atributos.update({key: None})
+            return self._atributos.update()
         for _key in _list_atributos.get('attributes'):
             match _key.get('id'):
                 case 'MPN':

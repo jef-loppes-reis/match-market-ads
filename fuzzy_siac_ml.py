@@ -3,12 +3,12 @@
 Returns:
     _type_: _description_
 """
-from os import path, mkdir
+from os import path, mkdir, listdir
 from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
 
 import bs4
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, read_feather, concat
 from httpx import Client
 from tqdm import tqdm
 from rich import print as rprint
@@ -72,6 +72,7 @@ class Main:
             "lista_url_anuncios",
             "lista_tag_mais_vendido",
             "lista_tag_avaliacao",
+            "lista_vendas",
             "lista_mlbs"
         ]
     )
@@ -85,7 +86,7 @@ class Main:
         self._ml: MLInterface = MLInterface
 
     def reset_df_infos(self):
-        self._df_infos_mlb = DataFrame().copy()
+        self._df_infos_mlb: DataFrame = DataFrame().copy()
         self._df_lojas_oficiais: DataFrame = DataFrame(
             columns=[
                 "nome_loja_oficial",
@@ -93,19 +94,13 @@ class Main:
                 "lista_url_anuncios",
                 "lista_tag_mais_vendido",
                 "lista_tag_avaliacao",
+                "lista_vendas",
                 "lista_mlbs"
             ]
         ).copy()
 
     def infos_lojas_oficiais(self, loja: str, linha: str, url: str):
-        entrada = None
-        # rprint('[bright_yellow]Digite o nome da loja:[/bright_yellow]')
-        # self._nome_loja: str = input().lower()
-        # rprint('[bright_yellow]Digite o nome da linha de produtos:[/bright_yellow]')
-        # self._nome_linha: str = input().lower()
-        # rprint('[bright_yellow]Digite o link da pagina de anuncios:[/bright_yellow]')
-        # entrada: str = input()
-        # self._url_loja_oficial = entrada
+
         self._nome_loja: str = loja
         self._nome_linha: str = linha
         self._url_loja_oficial: str = url
@@ -118,8 +113,10 @@ class Main:
                 'html.parser'
             )
 
-            _lista_link_anuncios_seller: dict[str, str | float] = AnunciosLojaOficial(
-                _site_loja_oficial).pegar_link_anuncios()
+            _an_loja_oficial: AnunciosLojaOficial = AnunciosLojaOficial(
+                _site_loja_oficial)
+
+            _lista_link_anuncios_seller: dict[str, str | float] = _an_loja_oficial.pegar_link_anuncios()
 
             self._df_lojas_oficiais['lista_url_anuncios'] = Series(
                 _lista_link_anuncios_seller.get('lista_link_anuncios')
@@ -130,6 +127,13 @@ class Main:
             self._df_lojas_oficiais['lista_tag_avaliacao'] = Series(
                 _lista_link_anuncios_seller.get('lista_tag_avaliacao')
             )
+            self._df_lojas_oficiais['lista_vendas'] = Series(
+                _lista_link_anuncios_seller.get('lista_vendas')
+            )
+            self._df_lojas_oficiais['lista_mlbs'] = Series(
+                _lista_link_anuncios_seller.get('lista_mlbs')
+            )
+
 
     def informacaoes_anuncios_api(self):
         """Método para fazer as requisições de todas as informações dos anúncios da página oficial.
@@ -139,25 +143,27 @@ class Main:
 
         # _idx: int = _df.index.values[0]
 
-        _df['lista_mlbs'] = None
+        # _df['lista_mlbs'] = None
         _df['lista_infos_mlb'] = None
         _df['lista_att_necessarios'] = None
 
-        _lista_mlb_res: list[str] = [
-            PegarInfosAnuncioApi(_ml_interface)
-            .pegar_mlb_url(url_mlb) for url_mlb in _df.loc[:, 'lista_url_anuncios']
-        ]
-        _df.loc[:, 'lista_mlbs'] = Series(_lista_mlb_res)
+        # _lista_mlb_res: list[str] = [
+        #     PegarInfosAnuncioApi(_ml_interface)
+        #     .pegar_mlb_url(url_mlb) for url_mlb in _df.loc[:, 'lista_url_anuncios']
+        # ]
+        # _df.loc[:, 'lista_mlbs'] = Series(_lista_mlb_res)
 
         _lista_infos_mlb_res: list[dict] = (
             PegarInfosAnuncioApi(_ml_interface)
             .pegar_infos_api(_df.loc[:, 'lista_mlbs'].to_list())
         )
         _df.loc[:, 'lista_infos_mlb'] = Series(_lista_infos_mlb_res)
+        rprint(_df)
 
         _lista_att_necessarios_res: list[dict] = []
         for atts in _df.loc[:, 'lista_infos_mlb']:
-            dict_atts: dict = PegarInfosAnuncioApi(_ml_interface).pegar_atributos_necessarios(loads(atts))
+            dict_atts: dict = PegarInfosAnuncioApi(
+                _ml_interface).pegar_atributos_necessarios(loads(atts))
             _lista_att_necessarios_res.append(dumps(dict_atts))
 
         _df.at[:, 'lista_att_necessarios'] = Series(_lista_att_necessarios_res)
@@ -190,6 +196,9 @@ class Main:
         )
         _df.loc[:, 'lista_tag_avaliacao'] = (
             self._df_infos_mlb.loc[:, 'lista_tag_avaliacao'].copy()
+        )
+        _df.loc[:, 'lista_vendas'] = (
+            self._df_infos_mlb.loc[:, 'lista_vendas'].copy()
         )
 
         with ProcessPoolExecutor(max_workers=None) as executor:
@@ -252,6 +261,17 @@ class Main:
                 f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy.xlsx'
             )
 
+    def juntar_resultados(self) -> DataFrame:
+        __arquivos: list[str] = listdir('./fuzzys/bosch')
+        __df_copy: DataFrame = DataFrame()
+        __here: str = path.dirname(__file__)
+        for arquivo in tqdm(__arquivos, desc='Juntando resultados: '):
+            if not arquivo.endswith('xlsx'):
+                _df: DataFrame = read_feather(path.join(
+                    __here, 'fuzzys','bosch', arquivo)).copy()
+                __df_copy: DataFrame = concat([__df_copy, _df])
+        return __df_copy
+
 
 if __name__ == "__main__":
 
@@ -265,10 +285,11 @@ if __name__ == "__main__":
     MARCA: str = 'BOSCH'
 
     grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
-    df_grupos: DataFrame = grupos.main()
-    # rprint(df_grupos)
-    grup: str = ''
     main: Main = Main()
+
+    df_grupos: DataFrame = grupos.main()
+    grup: str = ''
+
     for grup in tqdm(df_grupos.grupo_subgrupo,
                      desc=f'Grupos da {MARCA}.: ',
                      colour='yellow', total=len(df_grupos)):
@@ -279,14 +300,16 @@ if __name__ == "__main__":
             main.infos_lojas_oficiais(
                 loja=MARCA.lower(),
                 linha=grup.lower(),
-                # url=f'https://lista.mercadolivre.com.br/{_group.replace('+', '-')}_Loja_bosch-autopecas_NoIndex_True#D[A:{_group},on]'
-                url=f'https://lista.mercadolivre.com.br/{_group.replace('+', '-')}_Loja_bosch-autopecas'
+                url=f'https://lista.mercadolivre.com.br/{_group.replace(
+                    '+', '-')}_Loja_bosch-autopecas'
             )
-            if main._df_lojas_oficiais.empty:
-                rprint('Data Frame vazio!')
-                continue
+            # if main._df_lojas_oficiais.empty:
+            #     rprint('Data Frame vazio!')
+            #     continue
             main.informacaoes_anuncios_api()
             main.get_infos_fuzzy()
         except Exception as e:
             rprint(e)
             continue
+
+    main.juntar_resultados().to_excel(f'total_produtos_{MARCA.lower()}.xlsx')
