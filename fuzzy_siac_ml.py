@@ -288,7 +288,7 @@ if __name__ == "__main__":
     grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
     main: Main = Main()
 
-    df_grupos: DataFrame = grupos.main().head(10)
+    df_grupos: DataFrame = grupos.main()
     grup: str = ''
 
     for grup in tqdm(df_grupos.grupo_subgrupo,

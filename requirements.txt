@@ -3,8 +3,8 @@ beautifulsoup4==4.12.3
 certifi==2024.7.4
 charset-normalizer==3.3.2
 colorama==0.4.6
-db @ git+https://github.com/E-commerce-Pecista/db-connection.git@467278be13633642dabb8989ac5de150ad8dfcdb
-ecomm @ git+https://github.com/E-commerce-Pecista/ecomm-tools@4d389836cc3967d4a476acf8c8881a7858c10f19
+db @ git+https://github.com/E-commerce-Pecista/db-connection.git
+ecomm @ git+https://github.com/E-commerce-Pecista/ecomm-tools
 et-xmlfile==1.1.0
 fuzzywuzzy==0.18.0
 h11==0.14.0
@@ -14,7 +14,7 @@ idna==3.7
 Levenshtein==0.25.1
 markdown-it-py==3.0.0
 mdurl==0.1.2
-ml @ git+https://github.com/E-commerce-Pecista/ml-interface.git@0e769454cd4297436fabfcd2e641a93e6baecf63
+ml @ git+https://github.com/E-commerce-Pecista/ml-interface.git
 mysql-connector-python==9.0.0
 numpy==2.0.1
 openpyxl==3.1.5
