@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
 
 import bs4
-from pandas import DataFrame, Series, read_feather, concat
+from pandas import DataFrame, Series, read_feather, concat, isna
 from httpx import Client
 from tqdm import tqdm
 from rich import print as rprint
@@ -261,6 +261,32 @@ class Main:
                 f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy.xlsx'
             )
 
+    def filter_top(self, df: DataFrame):
+        df.loc[:, 'soma_fuzzy'] = df.loc[
+            :, 'soma_fuzzy'].str.replace('%','').astype(float)
+        df.loc[:, 'lista_tag_avaliacao'] = df.loc[
+            :, 'lista_tag_avaliacao'].fillna(0).astype(float)
+        df.loc[:, 'lista_vendas'] = df.loc[
+            :, 'lista_vendas'].fillna(0).astype(int)
+        __df_results: DataFrame = DataFrame()
+        for mpn_unico in tqdm(df.query('~mpn_ml.duplicated()')['mpn_ml']):
+            if not isna(mpn_unico):
+                df_filter_copy: DataFrame = df.query('mpn_ml == @mpn_unico').copy()
+                df_filter_copy: DataFrame = df_filter_copy.sort_values([
+                    'lista_vendas',
+                    'soma_fuzzy',
+                    'lista_tag_mais_vendido',
+                    'lista_tag_avaliacao'],
+                    ascending=False
+                ).reset_index(drop=True)
+                __df_results = concat(
+                    [
+                        __df_results,
+                        df_filter_copy.loc[[0]]
+                    ]
+                )
+        return __df_results
+
     def juntar_resultados(self, marca: str) -> DataFrame:
         marca: str = marca.lower()
         __arquivos: list[str] = listdir(f'./fuzzys/{marca}')
@@ -271,7 +297,8 @@ class Main:
                 _df: DataFrame = read_feather(path.join(
                     __here, 'fuzzys', marca, arquivo)).copy()
                 __df_copy: DataFrame = concat([__df_copy, _df])
-        return __df_copy
+        # return __df_copy
+        return self.filter_top(__df_copy)
 
 
 if __name__ == "__main__":
