@@ -73,7 +73,8 @@ class Main:
             "lista_tag_mais_vendido",
             "lista_tag_avaliacao",
             "lista_vendas",
-            "lista_mlbs"
+            "lista_mlbs",
+            "compat"
         ]
     )
 
@@ -141,24 +142,20 @@ class Main:
         _ml_interface: MLInterface = self._ml(1)
         _df: DataFrame = self._df_lojas_oficiais
 
-        # _idx: int = _df.index.values[0]
-
-        # _df['lista_mlbs'] = None
         _df['lista_infos_mlb'] = None
         _df['lista_att_necessarios'] = None
-
-        # _lista_mlb_res: list[str] = [
-        #     PegarInfosAnuncioApi(_ml_interface)
-        #     .pegar_mlb_url(url_mlb) for url_mlb in _df.loc[:, 'lista_url_anuncios']
-        # ]
-        # _df.loc[:, 'lista_mlbs'] = Series(_lista_mlb_res)
+        _df['compat'] = None
 
         _lista_infos_mlb_res: list[dict] = (
             PegarInfosAnuncioApi(_ml_interface)
             .pegar_infos_api(_df.loc[:, 'lista_mlbs'].to_list())
         )
         _df.loc[:, 'lista_infos_mlb'] = Series(_lista_infos_mlb_res)
-        rprint(_df)
+
+        _df.loc[:, 'compat'] = (
+            PegarInfosAnuncioApi(_ml_interface)
+            .check_compatibilities(_df.loc[:, 'lista_mlbs'])
+        )
 
         _lista_att_necessarios_res: list[dict] = []
         for atts in _df.loc[:, 'lista_infos_mlb']:
@@ -172,6 +169,7 @@ class Main:
             _df
             .reset_index(drop=True).copy()
         )
+        rprint(self._df_infos_mlb)
 
     def get_infos_fuzzy(self):
         """Metodo para criar uma lista de matchs com a biblioteca Fuzzy. Comparando os produtos
@@ -199,6 +197,9 @@ class Main:
         )
         _df.loc[:, 'lista_vendas'] = (
             self._df_infos_mlb.loc[:, 'lista_vendas'].copy()
+        )
+        _df.loc[:, 'compat'] = (
+            self._df_infos_mlb.loc[:, 'compat'].copy()
         )
 
         with ProcessPoolExecutor(max_workers=None) as executor:
@@ -253,7 +254,6 @@ class Main:
                 _df.loc[future.get('df_index'), 'soma_fuzzy'] = future.get(
                     'sum_scores')
 
-
             _df.sort_values('soma_fuzzy', ascending=False).to_feather(
                 f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy'
             )
@@ -297,7 +297,6 @@ class Main:
                 _df: DataFrame = read_feather(path.join(
                     __here, 'fuzzys', marca, arquivo)).copy()
                 __df_copy: DataFrame = concat([__df_copy, _df])
-        # return __df_copy
         return self.filter_top(__df_copy)
 
 
@@ -310,18 +309,22 @@ if __name__ == "__main__":
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
-    MARCA: str = 'BOSCH'
+    MARCA: str = 'MONROE' # De acordo com o nome do SIAC.
+    NOME_LOJA: str = 'monroe'
 
     grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
     main: Main = Main()
 
     df_grupos: DataFrame = grupos.main()
-    grup: str = ''
+    df_grupos = df_grupos.head(2).copy()
 
-    for grup in tqdm(df_grupos.grupo_subgrupo,
+    grup: str = ''
+    for grup in tqdm(iterable=df_grupos.grupo_subgrupo,
                      desc=f'Grupos da {MARCA}.: ',
-                     colour='yellow', total=len(df_grupos)):
-        rprint(f'\n[yellow]Grupo {grup}[/yellow]')
+                     colour='yellow',
+                     total=len(df_grupos)
+                ):
+        rprint(f'\n\t[yellow]{grup}[/yellow]')
         _group: str = sub(r'\s', '+', grup.lower())
         main.reset_df_infos()
         try:
@@ -329,13 +332,13 @@ if __name__ == "__main__":
                 loja=MARCA.lower(),
                 linha=grup.lower(),
                 url=f'https://lista.mercadolivre.com.br/{_group.replace(
-                    '+', '-')}_Loja_bosch-autopecas'
+                    '+', '-')}_Loja_{NOME_LOJA}'
             )
             main.informacaoes_anuncios_api()
             main.get_infos_fuzzy()
         except Exception as e:
             rprint(e)
-            continue
+            raise
 
     main.juntar_resultados(marca=MARCA).to_excel(
         f'total_produtos_{MARCA.lower()}.xlsx')
