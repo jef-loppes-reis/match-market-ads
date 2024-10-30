@@ -9,7 +9,9 @@ class SiacFuzzy:
     _score_defualt = 59
     _df_siac: DataFrame = DataFrame
 
-    def __init__(self, df_infos_mlb: DataFrame, columns: dict, 
+    def __init__(self,
+                 df_infos_mlb: DataFrame,
+                 columns: dict,
                  path_data: str) -> None:
         self._df_infos_mlb: DataFrame = df_infos_mlb
         self._padrao_colunas: dict = columns
