@@ -5,7 +5,7 @@ from time import sleep
 from re import findall
 
 from ecomm import MLInterface
-from httpx import Client, ReadTimeout, ConnectTimeout
+from httpx import Client, ReadTimeout, ConnectTimeout, Response
 from pandas import read_feather, Series
 from tqdm import tqdm
 from rich import print as rprint
@@ -30,10 +30,9 @@ class PegarInfosAnuncioApi:
         'produto': None,
     }
 
-    _base_url = "https://api.mercadolibre.com/items/%s/?include_attributes=all"
-
     def __init__(self, ml_interface: MLInterface) -> None:
-        self._headers: dict[str, str] = ml_interface._headers()
+        self._headers: dict[str, str] = ml_interface.headers()
+        self._base_url: str = "https://api.mercadolibre.com"
 
     def pegar_infos_api(self, lista_mlbs: list[str]) -> list[dict]:
         """Metodo para requistar informacoes da API,
@@ -46,7 +45,7 @@ class PegarInfosAnuncioApi:
             list[dict]: Lista de reponse em JSON.
         """
         lista_res: list = []
-        with Client() as client:
+        with Client(base_url=self._base_url) as client:
             for mlb in tqdm(iterable=lista_mlbs,
                             desc='Pegando informacoes na API: ',
                             colour='blue'):
@@ -57,7 +56,7 @@ class PegarInfosAnuncioApi:
                         break
                     try:
                         _res = client.get(
-                            url=self._base_url%mlb,
+                            url=f'/items/{mlb}/?include_attributes=all',
                             headers=self._headers
                         )
                         if _res.status_code in [429, 500]:
@@ -71,7 +70,7 @@ class PegarInfosAnuncioApi:
                             continue
                         if _res.status_code in [400, 404]:
                             rprint(
-                                self._base_url%mlb,
+                                f'/items/{mlb}/?include_attributes=all',
                                 _res.json()
                             )
                         lista_res.append(dumps(_res.json()))
@@ -99,12 +98,8 @@ class PegarInfosAnuncioApi:
         lista_url: list[str] = Series(lista_url).to_list()
         for url in lista_url:
             cod_mlb: str = findall(pattern=r'MLB-\d+|MLB\d+', string=url)
-            print(cod_mlb)
             if len(cod_mlb) > 0:
                 return f'{cod_mlb[0].replace('-','')}'
-
-
-
 
     def replace_caracteres(self, text: str) -> str:
         """Metodo para pegar um texto e tirar todos os caracteres especiais como acentos.
@@ -185,3 +180,31 @@ class PegarInfosAnuncioApi:
                 case _:
                     ...
         return self._atributos
+
+    def check_compatibilities(self, lista_mlbs: list[str]) -> list[bool]:
+        lista_res: list[bool] = []
+        with Client() as client:
+            for mlb in tqdm(iterable=lista_mlbs,
+                            desc='Checando compatibilidades...',
+                            total=len(lista_mlbs)):
+                tentativas: int = 0
+                while True:
+                    if tentativas < 16:
+                        try:
+                            _res_comp: Response = client.get(
+                                url=f'https://api.mercadolibre.com/items/{mlb}/compatibilities',
+                                headers=self._headers
+                            )
+                            if _res_comp.status_code in [429, 500]:
+                                sleep(1)
+                                tentativas+=1
+                                continue
+                            lista_res.append(
+                                True if len(_res_comp.json().get('products')) > 0 else False
+                            )
+                            break
+                        except ReadTimeout:
+                            sleep(30)
+                            tentativas+=1
+                            continue
+        return lista_res
