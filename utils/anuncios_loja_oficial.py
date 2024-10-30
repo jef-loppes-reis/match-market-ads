@@ -108,7 +108,8 @@ class AnunciosLojaOficial:
     def pegar_link_anuncios(self) -> dict[str, str | float]:
         # Lista de paginas.
         lista_paginas = self.lista_link_paginas_seller()
-        rprint({'lista de paginas': lista_paginas})
+        rprint(f'\nQuantidade de paginas: {len(lista_paginas)}')
+        # rprint({'lista de paginas': lista_paginas})
         lista_tag_mais_vendido: list[str | None] = []
         lista_tag_avaliacao: list[float] = []
         # Entra em cada pagina, e pega o link dos anuncios.
