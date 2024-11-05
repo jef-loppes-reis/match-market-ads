@@ -41,7 +41,7 @@ class GetFuzzyGrupos:
 
 if __name__ == '__main__':
     # GRUPO: str = input('Digite a marca do produto referente ao SIAC.: ')
-    MARCA: str = 'BOSCH'
-    pegar_grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca='BOSCH')
+    MARCA: str = 'KYB'
+    pegar_grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
     df_grupos: DataFrame = pegar_grupos.main()
 

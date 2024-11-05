@@ -1,3 +1,4 @@
+"""---"""
 from os import path, mkdir
 
 from httpx import Client, Response
@@ -12,7 +13,7 @@ class GetImgFile:
     _lista_photo_url_mlb: list[dict] = []
 
     def __init__(self, nome_loja: str) -> None:
-        self._headers_ml: dict = MLInterface(1)._headers()
+        self._headers_ml: dict = MLInterface(1).headers()
         self._nome_loja: str = nome_loja
 
     def pegar_lista_url_api(self, lista_mlbs: list[str]):
@@ -32,7 +33,7 @@ class GetImgFile:
                 )
 
     def get_img_url(self):
-        _path_out_photos = path.join(
+        _path_out_photos: str = path.join(
             path.dirname(__file__), 'out_files_photos')
 
         if not path.exists(path.join(_path_out_photos, self._nome_loja)):
@@ -44,7 +45,10 @@ class GetImgFile:
                                   total=len(self._lista_photo_url_mlb),
                                   colour='green'):
                 cont: int = 0 # Interacao com o id da foto refente ao MLB.
-                for photo_url in mlb_items.get('photos'):
+                photos: list = mlb_items.get('photos')
+                if photos is None:
+                    continue
+                for photo_url in photos:
                     res_html: Response = client.get(
                         url=photo_url.get('url').replace('D_', 'D_NQ_NP_2X_'),
                         timeout=None,
@@ -67,18 +71,19 @@ if __name__ == '__main__':
         rprint(f'[bright_yellow]Ops, nao existe uma planilha de primeira conferencia com esse nome [blue]{NOME_LOJA}.xlsx[/blue][/bright_yellow]')
         # raise ValueError('Planilha nao encontrada!')
     download_img = GetImgFile(NOME_LOJA)
-    
+
     lista_mlb: list[str] = (
         read_excel(
             path.join(
                 path.dirname(__file__),
-                '../data/planilhas_primeiro_processo/'
-                f'{NOME_LOJA}.xlsx'
-            )
+                # '../data/planilhas_primeiro_processo/'
+                f'../total_produtos_{NOME_LOJA}.xlsx'
+            ), dtype=str
         )
         .fillna(0)
-        .query('clona == 1')['mlb']
+        .query('clona == "1"')['mlb']
         .to_list()
     )
+    rprint(f'\nTotal de MLB: {len(lista_mlb)}')
     download_img.pegar_lista_url_api(lista_mlbs=lista_mlb)
     download_img.get_img_url()

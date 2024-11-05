@@ -1,3 +1,4 @@
+"""---"""
 from json import load, dumps
 from os import path, mkdir
 from re import sub
@@ -13,17 +14,31 @@ from pandas import (
     read_csv,
     merge,
     isna,
-    DataFrame
+    DataFrame,
+    options
 )
 from tqdm import tqdm
 
+options.display.max_columns = None
+
 
 def get_number_photo(lista_name_photo: str) -> list[str]:
+    """
+    get_number_photo Metodo para pegar o numero da foto.
+
+    _extended_summary_
+
+    Args:
+        lista_name_photo (str): Lista de fotos.
+
+    Returns:
+        list[str]: Lista de indices.
+    """
     return [name.split('_')[-1:][0].replace('.jpg', '') for name in lista_name_photo]
 
 
 ML_INTERFACE: MLInterface = MLInterface(1)
-HEADERS: dict = ML_INTERFACE._headers()
+HEADERS: dict = ML_INTERFACE.headers()
 CAMINHO_FOTOS: str = '../photo_validation/out_files_photos/%s'
 NOME_LOJA: str = 'takao'
 PATH_LOJA: str = f'./out/{NOME_LOJA}'
@@ -32,15 +47,17 @@ if not path.exists(PATH_LOJA):
     mkdir(PATH_LOJA)
 
 with open('./data/sale_terms.json', 'r', encoding='utf-8') as fp:
-    sale_terms = load(fp)
+    sale_terms: dict = load(fp)
 
 df_photos: DataFrame = read_feather(
     f'../temp/conferencia_fotos_{NOME_LOJA}.feather')
-df_photos = df_photos.query('~mlb.isna()').reset_index(drop=True).copy()
-df_photos['number_photo'] = get_number_photo(
+df_photos: DataFrame = df_photos.query('~mlb.isna()').reset_index(drop=True).copy()
+df_photos['number_photo'] = None
+df_photos.loc[:, 'number_photo'] = get_number_photo(
     df_photos.path_file_photo.fillna('0'))
 
-df_clona_genuino = read_excel(f'../data/planilhas_primeiro_processo/{NOME_LOJA}.xlsx', dtype=str)
+df_clona_genuino = read_excel(
+    f'../data/planilhas_primeiro_processo/{NOME_LOJA}.xlsx', dtype=str)
 df_clona_genuino = df_clona_genuino.set_axis(
     df_clona_genuino.columns.str.lower(), axis=1).copy()
 df_clona_genuino.loc[:, 'sku_certo'] = list(
@@ -54,12 +71,17 @@ df_clona_copy: DataFrame = merge(
     how='left'
 )
 
-df_clona_copy = df_clona_copy.query(
-    'clona == "1" and (verifeid_photo and pegar_foto)'
-).reset_index(drop=True).copy()
+df_clona_copy: DataFrame = df_clona_copy.astype({'compat': bool}).copy()
+
+df_clona_copy: DataFrame = df_clona_copy.loc[
+    (df_clona_copy['clona'] == "1") &
+    (df_clona_copy['compat']) &
+    (df_clona_copy['verifeid_photo'] & df_clona_copy['pegar_foto'])
+].copy()
 
 df_clona_copy = df_clona_copy.sort_values(
-    ['mlb', 'number_photo']).reset_index(drop=True)
+    ['mlb', 'number_photo']
+).reset_index(drop=True)
 
 clonagem: Clonador = Clonador(
     headers=HEADERS,
@@ -83,18 +105,26 @@ df_clonados: DataFrame = DataFrame(
 )
 
 try:
-    df_ultima_clonagem: DataFrame = read_csv(f'./out/{NOME_LOJA}/df_clonados_{NOME_LOJA}.csv')
-    df_clona_copy = df_clona_copy[~df_clona_copy['mlb'].isin(df_ultima_clonagem['item_id_genuino'])]
+    df_ultima_clonagem: DataFrame = read_csv(
+        f'./out/{NOME_LOJA}/df_clonados_{NOME_LOJA}.csv')
+    df_clona_copy = df_clona_copy[
+        ~df_clona_copy['mlb'].isin(df_ultima_clonagem['item_id_genuino'])]
 except FileNotFoundError:
     ...
 
 for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'):
     row: DataFrame = df_clona_copy.query('mlb == @mlb').reset_index(drop=True).copy()
-    sku_certo = row['sku_certo'].unique()[0]
-    if isna(sku_certo):
-        continue
-    sku: str = '' if isna(sku_certo) else sku_certo
-    codpro: str = clonagem.convert_sku_to_codpro(sku=sku)[0]
+    sku_siac: str = row['sku_siac'].unique()[0]
+    sku_certo: str = row['sku_certo'].unique()[0]
+
+    if isna(sku_certo) or sku_certo == 'nan':
+        codpro: str = clonagem._df_siac.query('num_fab == @sku_siac')['codpro'].unique()[0]
+        sku: str = codpro
+    else:
+        codpro: str = clonagem.convert_sku_to_codpro(
+            sku=sku_certo
+        )[0]
+        sku: str = sku_certo
 
     try:
         quebra_sku: list[str] = row.loc[0, 'sku_certo'].split('_')[1:]
@@ -158,7 +188,7 @@ for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'
     compati: int = clonagem.compatibilidades(
         item_id_ml_clone=mlb,
         item_id_novo=retorno_cadastro.get('id'),
-        view_compati=False
+        view_compati=True
     )
 
     retorno_descricao: Response = clonagem.descricao(

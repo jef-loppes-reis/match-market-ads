@@ -1,0 +1,4 @@
+CREATE TABLE "ECOMM".photos_match_markets_ads (
+	id integer NOT NULL DEFAULT,
+    
+)

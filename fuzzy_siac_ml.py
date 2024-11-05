@@ -3,7 +3,7 @@
 Returns:
     _type_: _description_
 """
-from os import path, mkdir, listdir
+from os import path, mkdir, listdir, makedirs
 from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
 
@@ -21,15 +21,16 @@ from utils.get_fuzzy_grupo import GetFuzzyGrupos
 
 
 class Main:
-    """_summary_
-
-    Raises:
-        ValueError: _description_
-
-    Returns:
-        _type_: _description_
     """
+     Classe principal para chamar todos os paramentros
+     e retornar a planilha de produtos.
 
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    # Lista de colunas da planilha final.
     _columns_default: dict[str, str] = {
         "lista_infos_mlb": "str",
         "lista_att_necessarios": "str",
@@ -63,8 +64,8 @@ class Main:
         "soma_fuzzy": "float",
         "clona": "str"
     }
-    _nome_loja = None
-    _nome_linha = None
+    _nome_loja: str = None
+    _nome_linha: str = None
     _df_lojas_oficiais: DataFrame = DataFrame(
         columns=[
             "nome_loja_oficial",
@@ -87,6 +88,9 @@ class Main:
         self._ml: MLInterface = MLInterface
 
     def reset_df_infos(self):
+        """
+        reset_df_infos Reseta os parametro do DataFrame final.
+        """
         self._df_infos_mlb: DataFrame = DataFrame().copy()
         self._df_lojas_oficiais: DataFrame = DataFrame(
             columns=[
@@ -101,7 +105,19 @@ class Main:
         ).copy()
 
     def infos_lojas_oficiais(self, loja: str, linha: str, url: str):
+        """
+        infos_lojas_oficiais Funcao para atribuir valor no data frame,
+        listando das as informacoes de cada anuncio da pagina.
 
+        Parameters
+        ----------
+        loja : str
+            Nome da loja oficial.
+        linha : str
+            Linha do produto.
+        url : str
+            URL da pagina oficial.
+        """
         self._nome_loja: str = loja
         self._nome_linha: str = linha
         self._url_loja_oficial: str = url
@@ -117,7 +133,9 @@ class Main:
             _an_loja_oficial: AnunciosLojaOficial = AnunciosLojaOficial(
                 _site_loja_oficial)
 
-            _lista_link_anuncios_seller: dict[str, str | float] = _an_loja_oficial.pegar_link_anuncios()
+            _lista_link_anuncios_seller: dict[str, str | float] = (
+                _an_loja_oficial.pegar_link_anuncios()
+            )
 
             self._df_lojas_oficiais['lista_url_anuncios'] = Series(
                 _lista_link_anuncios_seller.get('lista_link_anuncios')
@@ -172,94 +190,76 @@ class Main:
         rprint(self._df_infos_mlb)
 
     def get_infos_fuzzy(self):
-        """Metodo para criar uma lista de matchs com a biblioteca Fuzzy. Comparando os produtos
-        do Mercado Livre com os produtos do SIAC.
+        """Método para criar uma lista de matchs com a biblioteca Fuzzy,
+        comparando os produtos do Mercado Livre com os produtos do SIAC.
         """
         _path_fuzzys: str = f'./fuzzys/{self._nome_loja}'
-        if not path.exists(_path_fuzzys):
-            mkdir(_path_fuzzys)
 
+        makedirs('./fuzzys', exist_ok=True)
+        makedirs(_path_fuzzys, exist_ok=True)
+
+        # Inicializando o objeto SiacFuzzy
         _siac_fuzzy: SiacFuzzy = SiacFuzzy(
             self._df_infos_mlb,
             self._columns_default,
             './data/sql/produto_siac.sql'
         )
-
         _siac_fuzzy.read_db()
 
+        # Criando novo dataframe e copiando as colunas
         _df: DataFrame = _siac_fuzzy.created_new_dataframe()
+        columns_to_copy: list[str] = [
+            'lista_tag_mais_vendido',
+            'lista_tag_avaliacao',
+            'lista_vendas',
+            'compat'
+        ]
+        _df[columns_to_copy] = self._df_infos_mlb[columns_to_copy].copy()
 
-        _df.loc[:, 'lista_tag_mais_vendido'] = (
-            self._df_infos_mlb.loc[:,'lista_tag_mais_vendido'].copy()
-        )
-        _df.loc[:, 'lista_tag_avaliacao'] = (
-            self._df_infos_mlb.loc[:, 'lista_tag_avaliacao'].copy()
-        )
-        _df.loc[:, 'lista_vendas'] = (
-            self._df_infos_mlb.loc[:, 'lista_vendas'].copy()
-        )
-        _df.loc[:, 'compat'] = (
-            self._df_infos_mlb.loc[:, 'compat'].copy()
-        )
-
-        with ProcessPoolExecutor(max_workers=None) as executor:
-            for future in tqdm(executor.map(_siac_fuzzy.fuzzy_results,
-                                            _df['gtin_ml'],
-                                            _df['mpn_ml'],
-                                            _df['sku_ml'],
-                                            _df['numero_original_ml'],
-                                            _df['marca_ml'],
-                                            _df['mpn_marca_ml'],
-                                            _df['produto_ml'],
-                                            _df.index
-                                            ),
-                                desc='Verificando matchs Ml/SIAC: ',
-                                colour='green', total=len(_df)
-                                ):
-                _df.at[future.get('df_index'), 'gtin_siac'] = future.get(
-                    'gtin_siac')
-                _df.at[future.get('df_index'), 'gtin_fuzzy'] = future.get(
-                    'score_gtin_before')
-
-                _df.at[future.get('df_index'), 'mpn_siac'] = future.get(
-                    'mpn_siac')
-                _df.at[future.get('df_index'), 'mpn_fuzzy'] = future.get(
-                    'score_mpn_before')
-
-                _df.at[future.get('df_index'), 'sku_siac'] = future.get(
-                    "sku_siac")
-                _df.at[future.get('df_index'), 'sku_fuzzy'] = future.get(
-                    'score_sku_before')
-
-                _df.at[future.get('df_index'), 'numero_original_siac'] = future.get(
-                    'num_orig_siac')
-                _df.at[future.get('df_index'), 'numero_original_fuzzy'] = future.get(
-                    'score_num_orig_before')
-
-                _df.at[future.get('df_index'), 'marca_siac'] = future.get(
-                    'marca_siac')
-                _df.at[future.get('df_index'), 'marca_fuzzy'] = future.get(
-                    'score_marca_before')
-
-                _df.at[future.get('df_index'), 'mpn_marca_siac'] = future.get(
-                    'mpn_marca_siac')
-                _df.at[future.get('df_index'), 'mpn_marca_fuzzy'] = future.get(
-                    'score_mpn_marca_before')
-                
-                _df.at[future.get('df_index'), 'produto_siac'] = future.get(
-                    'produto_siac')
-                _df.at[future.get('df_index'), 'produto_fuzzy'] = future.get(
-                    'score_produto_before')
-
-                _df.loc[future.get('df_index'), 'soma_fuzzy'] = future.get(
-                    'sum_scores')
-
-            _df.sort_values('soma_fuzzy', ascending=False).to_feather(
-                f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy'
+        # Realizando o processamento paralelo e aplicando fuzzy matching
+        with ProcessPoolExecutor() as executor:
+            # Cria uma lista de futures.
+            futures = [executor.submit(
+                _siac_fuzzy.fuzzy_results,
+                gtin_ml,
+                mpn_ml,
+                sku_ml,
+                numero_original_ml,
+                marca_ml,
+                mpn_marca_ml,
+                produto_ml,
+                index
             )
-            _df.sort_values('soma_fuzzy', ascending=False).to_excel(
-                f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy.xlsx'
-            )
+            for gtin_ml, mpn_ml, sku_ml, numero_original_ml,
+                marca_ml, mpn_marca_ml, produto_ml, index in zip(
+                    _df['gtin_ml'],
+                    _df['mpn_ml'],
+                    _df['sku_ml'],
+                    _df['numero_original_ml'],
+                    _df['marca_ml'],
+                    _df['mpn_marca_ml'],
+                    _df['produto_ml'],
+                    _df.index
+                )]
+            # Coletando resultados dos futures e atualizando o DataFrame
+            for future in tqdm(iterable=futures,
+                               desc='Verificando matchs Ml/SIAC.: ',
+                               colour='green',
+                               total=len(_df)):
+                result: dict = future.result()
+                df_index: int = result.get('df_index')
+                for col_suffix, key in zip(
+                    ['gtin', 'mpn', 'sku', 'numero_original', 'marca', 'mpn_marca', 'produto'],
+                    ['gtin', 'mpn', 'sku', 'num_orig', 'marca', 'mpn_marca', 'produto']
+                ):
+                    _df.at[df_index, f'{col_suffix}_siac'] = result.get(f'{key}_siac')
+                    _df.at[df_index, f'{col_suffix}_fuzzy'] = result.get(f'score_{key}_before')
+
+                _df.at[df_index, 'soma_fuzzy'] = result.get('sum_scores')
+        # Salvando DataFrame ordenado
+        sorted_df: DataFrame = _df.sort_values('soma_fuzzy', ascending=False)
+        sorted_df.to_feather(f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy')
+        sorted_df.to_excel(f'{_path_fuzzys}/df_{self._nome_loja}_{self._nome_linha}_fuzzy.xlsx')
 
     def filter_top(self, df: DataFrame):
         df.loc[:, 'soma_fuzzy'] = df.loc[
@@ -309,14 +309,14 @@ if __name__ == "__main__":
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
-    MARCA: str = 'MONROE' # De acordo com o nome do SIAC.
-    NOME_LOJA: str = 'monroe'
+    MARCA: str = 'AXIOS' # De acordo com o nome do SIAC.
+    NOME_LOJA: str = 'monroe-axios'
 
     grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
     main: Main = Main()
 
     df_grupos: DataFrame = grupos.main()
-    df_grupos = df_grupos.head(2).copy()
+    df_grupos = df_grupos.head(1).copy()
 
     grup: str = ''
     for grup in tqdm(iterable=df_grupos.grupo_subgrupo,
