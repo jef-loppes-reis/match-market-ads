@@ -1,9 +1,10 @@
-from json import load, dumps
+"""---"""
+from json import dumps
 from re import sub
 from time import sleep
 
 from ecomm import Postgres
-from httpx import Client, Response, ConnectTimeout
+from httpx import Client, Response, ReadTimeout, ReadError
 from rich import print as rprint
 from pandas import DataFrame, isna
 
@@ -31,18 +32,19 @@ class Clonador:
     }
     _res_mlb: dict = {}
     _res_descp: dict = {}
-    _df_siac: DataFrame = DataFrame()
+    df_siac: DataFrame = DataFrame()
     df_siac_filter: DataFrame = DataFrame()
     _corpo_compatibilidades_default: dict[str, str] = {
         'id': None,       # catalog_product_id
         'note': None,     # catalog_product_name
     }
+    __num_tentativas: int = 0
 
     def __init__(self, headers: dict, sales_terms: dict):
         self._headers: dict = headers
         self._sales_terms = sales_terms
 
-    def convert_sku_to_codpro(self, sku: str) -> list[str]:
+    def convert_sku_to_codpro(self, sku: str) -> None | list[str]:
         """_summary_
 
         Args:
@@ -88,10 +90,10 @@ class Clonador:
     def read_product_siac(self) -> DataFrame:
         with Postgres() as db:
             with open('./data/d_1_produto.sql', 'r', encoding='utf-8') as fp:
-                self._df_siac = db.query(fp.read()).copy()
+                self.df_siac = db.query(fp.read()).copy()
 
     def read_df_siac_filter(self, codpro_produto: str):
-        self.df_siac_filter: DataFrame = self._df_siac.query(
+        self.df_siac_filter: DataFrame = self.df_siac.query(
             f'codpro == "{codpro_produto}"').reset_index(drop=True).copy()
 
     def lista_attributos(self, sku: str) -> list[dict[str, str | float]]:
@@ -219,79 +221,8 @@ class Clonador:
         except Exception as e:
             rprint(e)
 
-    def post_compatibilidades(self,
-                              payload: dict[str, str],
-                              http_client: Client,
-                              item_id_novo: str
-                            ) -> None | Response:
-        _tentativas: int = 0
-        while True:
-            if _tentativas > 14:
-                return
-            _res: Response = http_client.post(
-                url=f'/{item_id_novo}/compatibilities',
-                headers=self._headers,
-                data=dumps(payload)
-            )
-            if _res.status_code in [429, 500]:
-                sleep(3)
-                _tentativas += 1
-                continue
-            return _res
-
-    def compatibilidades(self, item_id_ml_clone: str, item_id_novo: str,
-                         view_compati: bool = False) -> Response | int:
-        _lista_aplicacoes = []
-        _corpo_compatibilidades = self._corpo_compatibilidades_default
-
-        while True:
-            with Client(base_url=self._base_url) as client:
-                _res_compatibilidades: Response = client.get(
-                    url=f'/{item_id_ml_clone}/compatibilities',
-                    headers=self._headers
-                )
-
-                if _res_compatibilidades.status_code in [429, 500]:
-                    sleep(3)
-                    continue
-
-                if view_compati:
-                    return _res_compatibilidades
-
-                for group_keys in _res_compatibilidades.json().get('products'):
-                    # pprint(group_keys)
-                    for key in group_keys:
-                        match key:
-                            case 'catalog_product_id':
-                                _corpo_compatibilidades.update(
-                                    {
-                                        'id': group_keys.get(key)
-                                    }
-                                )
-                            case 'catalog_product_name':
-                                _corpo_compatibilidades.update(
-                                    {
-                                        'note': group_keys.get(key)
-                                    }
-                                )
-                    _lista_aplicacoes.append(_corpo_compatibilidades)
-                    _corpo_compatibilidades = self._corpo_compatibilidades_default
-
-
-                created_compatibilities_count: None | Response = (
-                    self.post_compatibilidades(
-                        payload={'products': _lista_aplicacoes},
-                        http_client=client,
-                        item_id_novo=item_id_novo
-                    )
-                )
-
-                if not created_compatibilities_count is None:
-                    return created_compatibilities_count.json().get('created_compatibilities_count')
-                return 0
-
-
     def gerar_payload_cadastro(self, list_path_img: list[str], sku: str):
+        rprint(self.df_siac_filter)
         for key, _ in self.corpo_clonagem.items():
             match key:
                 case 'title':
@@ -307,8 +238,9 @@ class Clonador:
                         {key: 5329}
                     )
                 case 'available_quantity':
+                    __estoque: int | None = self.df_siac_filter.loc[0, 'estoque']
                     self.corpo_clonagem.update(
-                        {key: int(self.df_siac_filter.loc[0, 'estoque'])}
+                        {key: 0 if __estoque is None else int(__estoque)}
                     )
                 case 'price':
                     self.corpo_clonagem.update(
@@ -347,41 +279,50 @@ class Clonador:
 
     def descricao(self, item_id_novo: str, descricao: str) -> Response:
         with Client(base_url=self._base_url) as client:
-            _res_descricao: Response = client.post(
-                url=f'/{item_id_novo}/description',
-                headers=self._headers,
-                data=dumps({'plain_text': descricao})
-            )
-        return _res_descricao
+            while True:
+                if self.__num_tentativas < 16:
+                    _res_descricao: Response = client.post(
+                        url=f'/{item_id_novo}/description',
+                        headers=self._headers,
+                        data=dumps({'plain_text': descricao})
+                    )
+                    if _res_descricao.status_code in [429, 500]:
+                        sleep(1)
+                        self.__num_tentativas+=1
+                        continue
+                    self.__num_tentativas = 0
+                    return _res_descricao
 
     def cadastro(self) -> dict:
         with Client() as client:
-            _tentativas_cadastro = 0
             while True:
-                if _tentativas_cadastro > 9:
-                    return {'id': None}
-                try:
-                    # _copia_corpo_clonagem: dict = self.corpo_clonagem
-                    # _copia_corpo_clonagem.pop('description')
-                    with open('teste.json', 'w', encoding='utf-8') as fp:
-                        fp.write(dumps(self.corpo_clonagem, ensure_ascii=False))
-                    rprint(self.corpo_clonagem)
-                    _res_cadastro: Response = client.post(
-                        url='https://api.mercadolibre.com/items',
-                        headers=self._headers,
-                        json=dumps(self.corpo_clonagem)
-                    )
-                    if _res_cadastro.status_code in [429, 500]:
-                        _tentativas_cadastro += 1
-                        sleep(5)
+                if self.__num_tentativas < 16:
+                    try:
+                        # _copia_corpo_clonagem: dict = self.corpo_clonagem
+                        # _copia_corpo_clonagem.pop('description')
+                        with open('teste.json', 'w', encoding='utf-8') as fp:
+                            fp.write(dumps(self.corpo_clonagem, ensure_ascii=False))
+                        rprint(self.corpo_clonagem)
+                        _res_cadastro: Response = client.post(
+                            url='https://api.mercadolibre.com/items',
+                            headers=self._headers,
+                            json=dumps(self.corpo_clonagem)
+                        )
+                        if _res_cadastro.status_code in [429, 500]:
+                            self.__num_tentativas += 1
+                            sleep(5)
+                            continue
+                        self.__num_tentativas = 0
+                        return _res_cadastro.json()
+                    except ReadError:
+                        self.__num_tentativas += 1
+                        sleep(30)
                         continue
-                    return _res_cadastro.json()
-                except ConnectionError:
-                    sleep(10)
-                    continue
-                except ConnectTimeout:
-                    sleep(10)
-                    continue
+                    except ReadTimeout:
+                        self.__num_tentativas += 1
+                        sleep(30)
+                        continue
+                return {'id': None}
 
 
     def main(self):
