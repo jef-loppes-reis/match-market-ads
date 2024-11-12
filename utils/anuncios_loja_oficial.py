@@ -50,9 +50,10 @@ class AnunciosLojaOficial:
             self._link_num_pagina[1]
         )
         for x in paginas:
-            page = x.find('a')['href']
-            if page is None or page != '':
-                list_pages.append(page)
+            if 'href' in x.find('a'):
+                page = x.find('a')['href']
+                if page is None or page != '':
+                    list_pages.append(page)
         return list_pages
 
     def entrar_pagina(self, client: Client, url: str) -> BeautifulSoup:
