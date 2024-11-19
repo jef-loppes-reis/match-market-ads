@@ -309,14 +309,14 @@ if __name__ == "__main__":
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
-    MARCA: str = 'AXIOS' # De acordo com o nome do SIAC.
-    NOME_LOJA: str = 'monroe-axios'
+    MARCA: str = 'VALEO' # De acordo com o nome do SIAC.
+    NOME_LOJA: str = 'valeo'
 
     grupos: GetFuzzyGrupos = GetFuzzyGrupos(marca=MARCA)
     main: Main = Main()
 
     df_grupos: DataFrame = grupos.main()
-    df_grupos = df_grupos.head(1).copy()
+    df_grupos = df_grupos.copy()
 
     grup: str = ''
     for grup in tqdm(iterable=df_grupos.grupo_subgrupo,
