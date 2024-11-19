@@ -1,4 +1,4 @@
-from os import path, listdir, system
+from os import path, listdir, system, makedirs
 import tkinter as tk
 from tkinter import messagebox
 
@@ -45,6 +45,9 @@ class App:
         self.__loja: str = loja
         self.__path_files_photos: str = path.join(
             path.dirname(__file__), f'out_files_photos/{self.__loja}')
+        self.__path_files_data: str = path.join(
+            path.dirname(__file__), f'out/{self.__loja}'
+        )
 
     def created_new_dataframe(self):
         """Metodo para criar a planilha principal da varificacao de fotos.
@@ -70,20 +73,20 @@ class App:
         self.__df_default.loc[:, 'marca_dagua'] = False
         self.__df_default.loc[:, 'texto_na_foto'] = False
 
-        self.__df_default.to_feather(f'../temp/conferencia_fotos_{self.__loja}.feather')
-        self.__df_default.to_csv(f'../temp/conferencia_fotos_{self.__loja}.csv', index=False)
+        self.__df_default.to_feather(f'./out/conferencia_fotos_{self.__loja}.feather')
+        self.__df_default.to_csv(f'./out/conferencia_fotos_{self.__loja}.csv', index=False)
 
     def ler_dataframe(self):
         """Metodo para ler uma planilha de checagem, o primeiro passo do projeto "Verificacao de
         possiveis clonagens".
         """
-        # self.__df_genuino = read_feather('../temp/df_default.feather')
+        # self.__df_genuino = read_feather('./out/df_default.feather')
         try:
             self.__df_genuino = read_feather(
-                f'../temp/conferencia_fotos_{self.__loja}.feather')
+                f'./out/conferencia_fotos_{self.__loja}.feather')
         except FileNotFoundError:
             self.__menssagem_index_error(
-                msg=f'../temp/conferencia_fotos_{self.__loja}.feather\nChame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.'
+                msg=f'./out/conferencia_fotos_{self.__loja}.feather\nChame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.'
             )
             rprint('[bright_yellow]Ops, nao encontrei a planilha de conferencia.[/bright_yellow]')
             rprint('Chame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.')
@@ -152,8 +155,8 @@ class App:
         )
 
     def __save_data(self):
-        self.__df_copy.to_csv(f'../temp/conferencia_fotos_{self.__loja}.csv', index=False)
-        self.__df_copy.to_feather(f'../temp/conferencia_fotos_{self.__loja}.feather')
+        self.__df_copy.to_csv(f'./out/conferencia_fotos_{self.__loja}.csv', index=False)
+        self.__df_copy.to_feather(f'./out/conferencia_fotos_{self.__loja}.feather')
 
     def __janela(self,
                  proxima_foto: bool = False,
@@ -222,6 +225,9 @@ class App:
         """Metodo principal, executa a o objeto inteiro.
         """
 
+        if not path.exists(self.__path_files_data):
+            self.created_new_dataframe()
+
         rprint(self.__index_config)
 
         if self.__primeira_foto:
@@ -277,7 +283,7 @@ class App:
 
 if __name__ == '__main__':
 
-    rprint('Digite o nome da loja: ')
+    rprint('\nDigite o nome da loja: ')
     NOME_LOJA: str = input()
     while True:
         rprint(f'[bright_yellow]Nome da loja informada [bright_magenta]{NOME_LOJA.upper()}[/bright_magenta][/bright_yellow]')

@@ -235,25 +235,15 @@ if __name__ == "__main__":
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
-<<<<<<< HEAD
     MARCA = 'GAUSS'
     NOME_LOJA = 'gauss'
-=======
-    MARCA: str = 'VALEO' # De acordo com o nome do SIAC.
-    NOME_LOJA: str = 'valeo'
->>>>>>> 20179b0ff526b292d6fdfe24d7ba9760a07772a4
 
     grupos = GetFuzzyGrupos(marca=MARCA)
     main = Main(nome_loja=NOME_LOJA)
 
-<<<<<<< HEAD
     for grupo in tqdm(grupos.main()['grupo_subgrupo'], desc=f'Grupos da {MARCA}:', colour='yellow'):
         rprint(f'\n\t[yellow]{grupo}[/yellow]')
         grupo_normalizado = sub(r'\s', '+', grupo.lower())
-=======
-    df_grupos: DataFrame = grupos.main()
-    df_grupos = df_grupos.copy()
->>>>>>> 20179b0ff526b292d6fdfe24d7ba9760a07772a4
 
         main.reset_df_infos()
 
