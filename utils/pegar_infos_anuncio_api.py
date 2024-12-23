@@ -3,6 +3,7 @@ from os import system
 from json import dumps
 from time import sleep
 from re import findall
+from random import randrange
 
 from ecomm import MLInterface
 from httpx import Client, ReadTimeout, ConnectTimeout, Response
@@ -49,44 +50,44 @@ class PegarInfosAnuncioApi:
             for mlb in tqdm(iterable=lista_mlbs,
                             desc='Pegando informacoes na API: ',
                             colour='blue'):
-                tentativas: int = 0
-                while True:
-                    if tentativas > 9:
-                        rprint({mlb: f'Tentativas: {tentativas}'})
-                        break
+                for __attempts in range(10):
+                    __time_range: int = 0
                     try:
-                        _res = client.get(
+                        _res: Response = client.get(
                             url=f'/items/{mlb}/?include_attributes=all',
                             headers=self._headers
                         )
-                        if _res.status_code in [429, 500]:
-                            rprint(
-                                {
-                                    mlb: f'status_code: {_res.status_code} | tentativas: {tentativas}'
-                                }
-                            )
-                            sleep(1)
-                            tentativas += 1
+                        _status_code: int =  _res.status_code
+                        if _res.is_server_error:
+                            __time_range: int = randrange(5, 15)
+                            rprint(f'[yellow]Aviso: Erro de servidor [{_status_code}]. Tentando novamente em {__time_range}s...[/yellow]')
+                            sleep(__time_range)
                             continue
-                        if _res.status_code in [400, 404]:
-                            rprint(
-                                f'/items/{mlb}/?include_attributes=all',
-                                _res.json()
-                            )
+                        if _res.is_client_error:
+                            if _status_code == 429:
+                                __time_range: int = randrange(3, 10)
+                                rprint(f'[yellow]Aviso: Maximo de requisicoes [{_status_code}]. Tentando novamente em {__time_range}s...[/yellow]')
+                                sleep(__time_range)
+                                continue
+                            rprint(f'[red]Erro: Corpo JSON [{_status_code}].[/red]')
+                            rprint(f'[yellow]URL: /items/{mlb}/?include_attributes=all')
+                            rprint(_res.json())
+                            raise ValueError()
                         lista_res.append(dumps(_res.json()))
                         break
-                    except ReadTimeout:
-                        break
-                    except ConnectionError:
-                        sleep(10)
+                    except ReadTimeout as error:
+                        __time_range: int = randrange(10, 30)
+                        rprint(f'[yellow]Aviso: Tempo limite de conexao, {error}. Tentando novamente em {__time_range}s...[/yellow]')
                         continue
-                    except ConnectTimeout:
-                        rprint({mlb: f'TimeOut | tentativas: {tentativas}'})
-                        sleep(10)
+                    except ConnectionError as error:
+                        __time_range: int = randrange(10, 30)
+                        rprint(f'[yellow]Aviso: Erro de conexao, {error}. Tentando novamente em {__time_range}s...[/yellow]')
                         continue
+                rprint(f'[red]Erro: Numero de tentativas exedido, total {__attempts}.[/red]')
+                raise ValueError()
         return lista_res
 
-    def pegar_mlb_url(self, lista_url: list[str]) -> str | None:
+    def pegar_mlb_url(self, lista_url: list[str]) -> str:
         """Metodo para pegar o codigo MLB de uma URL. Faz um split com referencia do texto MLB.
 
         Args:
@@ -185,26 +186,40 @@ class PegarInfosAnuncioApi:
         lista_res: list[bool] = []
         with Client() as client:
             for mlb in tqdm(iterable=lista_mlbs,
-                            desc='Checando compatibilidades...',
+                            desc='Checando compatibilidades.:',
+                            colour='yellow',
                             total=len(lista_mlbs)):
-                tentativas: int = 0
-                while True:
-                    if tentativas < 16:
-                        try:
-                            _res_comp: Response = client.get(
-                                url=f'https://api.mercadolibre.com/items/{mlb}/compatibilities',
-                                headers=self._headers
-                            )
-                            if _res_comp.status_code in [429, 500]:
-                                sleep(1)
-                                tentativas+=1
+                for __attempts in range(10):
+                    try:
+                        _res_comp: Response = client.get(
+                            url=f'https://api.mercadolibre.com/items/{mlb}/compatibilities',
+                            headers=self._headers
+                        )
+                        _status_code: int = _res_comp.status_code
+                        __time_range: int = 0
+                        if _res_comp.is_client_error:
+                            if _status_code == 429:
+                                __time_range: int = randrange(3, 10)
+                                rprint(f'[yellow]Aviso: Maximo de requisicoes [{_status_code}]. Tentando novamente em {__time_range}s...[/yellow]')
+                                sleep(__time_range)
                                 continue
+                            rprint(f'[red]Erro: Corpo JSON [{_status_code}].[/red]')
+                            rprint(f'[yellow]URL: /items/{mlb}/compatibilities')
+                            rprint(_res_comp.json())
+                            raise ValueError()
+                        if _res_comp.is_success:
                             lista_res.append(
-                                True if len(_res_comp.json().get('products')) > 0 else False
+                                bool(_res_comp.json().get('products'))
                             )
                             break
-                        except ReadTimeout:
-                            sleep(30)
-                            tentativas+=1
-                            continue
+                    except ReadTimeout as error:
+                        __time_range: int = randrange(10, 30)
+                        rprint(f'[yellow]Aviso: Tempo limite de conexao, {error}. Tentando novamente em {__time_range}s...[/yellow]')
+                        continue
+                    except ConnectionError as error:
+                        __time_range: int = randrange(10, 30)
+                        rprint(f'[yellow]Aviso: Erro de conexao, {error}. Tentando novamente em {__time_range}s...[/yellow]')
+                        continue
+                rprint(f'[red]Erro: Numero de tentativas exedido, total {__attempts}.[/red]')
+                raise ValueError()
         return lista_res

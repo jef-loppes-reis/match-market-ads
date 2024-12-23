@@ -1,9 +1,11 @@
-from os import path, mkdir, makedirs, listdir
+"""---"""
 import re
+from os import path, mkdir, makedirs, listdir
 from concurrent.futures import ProcessPoolExecutor
 from json import loads, dumps
+
 import bs4
-from pandas import DataFrame, Series, read_feather, concat, isna
+from pandas import DataFrame, Series, read_feather, concat
 from httpx import Client
 from tqdm import tqdm
 from rich import print as rprint
@@ -56,9 +58,14 @@ class Main:
         self._nome_loja: str = self.__sanitize_filename(nome_loja).lower()
         self._df_infos_mlb = DataFrame()
         self._df_lojas_oficiais = DataFrame(columns=[
-            "nome_loja_oficial", "url_loja_oficial", "lista_url_anuncios",
-            "lista_tag_mais_vendido", "lista_tag_avaliacao", "lista_vendas", 
-            "lista_mlbs", "compat"
+            "nome_loja_oficial",
+            "url_loja_oficial",
+            "lista_url_anuncios",
+            "lista_tag_mais_vendido",
+            "lista_tag_avaliacao",
+            "lista_vendas", 
+            "lista_mlbs",
+            "compat"
         ])
         self._ml = MLInterface(1)
 
@@ -87,8 +94,12 @@ class Main:
         """Reseta o DataFrame com informações dos anúncios da loja."""
         self._df_infos_mlb = DataFrame()
         self._df_lojas_oficiais = DataFrame(columns=[
-            "nome_loja_oficial", "url_loja_oficial", "lista_url_anuncios",
-            "lista_tag_mais_vendido", "lista_tag_avaliacao", "lista_vendas",
+            "nome_loja_oficial",
+            "url_loja_oficial",
+            "lista_url_anuncios",
+            "lista_tag_mais_vendido",
+            "lista_tag_avaliacao",
+            "lista_vendas",
             "lista_mlbs"
         ])
 
@@ -106,6 +117,7 @@ class Main:
 
         except Exception as e:
             rprint(f"Erro ao buscar informações da loja oficial: {e}")
+            raise ValueError() from e
 
     def informacoes_anuncios_api(self):
         """Obtém dados dos anúncios via API e popula o DataFrame."""
@@ -121,10 +133,10 @@ class Main:
                 for atts in self._df_lojas_oficiais['lista_infos_mlb']
             ]
             self._df_infos_mlb = self._df_lojas_oficiais.reset_index(drop=True)
-            rprint(self._df_infos_mlb)
 
         except Exception as e:
-            rprint(f"Erro ao obter informações dos anúncios via API: {e}")
+            rprint(f"[red]ERRO: Erro ao obter informações dos anúncios via API: {e}[/red]")
+            raise ValueError() from e
 
     def get_infos_fuzzy(self, linha_produto: str):
         """Aplica comparações fuzzy para correlacionar produtos entre sistemas."""
@@ -183,19 +195,44 @@ class Main:
         sorted_df.to_excel(f'{fuzzy_path}/df_{self._nome_loja}_{_linha_produto_normalize}_fuzzy.xlsx')
 
     def filter_top(self, df: DataFrame) -> DataFrame:
-        """Aplica filtros no DataFrame para selecionar os melhores resultados."""
+        """
+        Filtra o DataFrame para selecionar os melhores resultados com base em critérios específicos.
+
+        Args:
+            df (DataFrame): DataFrame de entrada contendo as colunas necessárias para o filtro.
+
+        Returns:
+            DataFrame: DataFrame contendo os melhores resultados por 'mpn_ml'.
+        """
+        # Criando cópia para evitar mutação
+        df = df.copy()
+
+        # Tratamento de dados
         df['soma_fuzzy'] = df['soma_fuzzy'].str.replace('%', '').astype(float)
         df['lista_tag_avaliacao'] = df['lista_tag_avaliacao'].fillna(0).astype(float)
         df['lista_vendas'] = df['lista_vendas'].fillna(0).astype(int)
+        df['lista_tag_mais_vendido'] = df['lista_tag_mais_vendido'].fillna(0).astype(int)
 
-        top_results = DataFrame()
-        for mpn_unico in df['mpn_ml'].drop_duplicates():
-            if not isna(mpn_unico):
-                top_item = df[df['mpn_ml'] == mpn_unico].sort_values(
-                    ['lista_vendas', 'soma_fuzzy', 'lista_tag_mais_vendido', 'lista_tag_avaliacao'],
-                    ascending=False
-                ).iloc[0]
-                top_results = concat([top_results, top_item.to_frame().T])
+        # Ordenar os dados
+        df = df.sort_values(
+            by=[
+                'mpn_ml',
+                'lista_vendas',
+                'soma_fuzzy',
+                'lista_tag_mais_vendido',
+                'lista_tag_avaliacao'
+            ],
+            ascending=[
+                True,
+                False,
+                False,
+                False,
+                False
+            ]
+        ).copy()
+
+        # Selecionar o melhor por 'mpn_ml'
+        top_results = df.groupby('mpn_ml', as_index=False).first()
 
         return top_results
 
@@ -241,7 +278,11 @@ if __name__ == "__main__":
     grupos = GetFuzzyGrupos(marca=MARCA)
     main = Main(nome_loja=NOME_LOJA)
 
-    for grupo in tqdm(grupos.main()['grupo_subgrupo'], desc=f'Grupos da {MARCA}:', colour='yellow'):
+    for grupo in tqdm(
+        grupos.main()['grupo_subgrupo'][1:],
+        desc=f'Grupos da {MARCA}:',
+        colour='yellow'
+    ):
         rprint(f'\n\t[yellow]{grupo}[/yellow]')
         grupo_normalizado = sub(r'\s', '+', grupo.lower())
 
@@ -250,6 +291,7 @@ if __name__ == "__main__":
         try:
             main.infos_lojas_oficiais(
                 url=f'https://lista.mercadolivre.com.br/{grupo_normalizado.replace("+", "-")}_Loja_{NOME_LOJA}'
+                # url='https://lista.mercadolivre.com.br/_Loja_elf'
             )
             main.informacoes_anuncios_api()
             main.get_infos_fuzzy(linha_produto=grupo)
@@ -257,7 +299,7 @@ if __name__ == "__main__":
             rprint(f"Erro no processamento do grupo {grupo}: {e}")
 
     (
-        main.juntar_resultados(marca=MARCA)
+        main.juntar_resultados(marca=NOME_LOJA)
         .to_excel(f'./total_produtos_{NOME_LOJA.lower()}.xlsx')
     )
     # main.juntar_resultados(marca=NOME_LOJA)

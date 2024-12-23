@@ -60,6 +60,13 @@ class ValidadorImagem:
     __frame_botoes = ctk.CTkFrame(__root)
     __frame_botoes.pack(pady=5)
 
+    # Botoes opcoes
+    __botao_foto_marca_dagua: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_texto_img: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_fundo_neutro: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_logo: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_carro: CTkButton = CTkButton(__frame_botoes)
+
     # Painal dos indices
     __index_label: ctk.CTkLabel = ctk.CTkLabel(
         __root,
@@ -230,7 +237,7 @@ class ValidadorImagem:
             self.__mudar_status_carro(True)
 
         if proxima_foto:
-            rprint(self.__marca_dagua)
+            self.__change_color(color=None)
             self.__df_copy.loc[self.__index_config.get(
                 'indice_atual'), 'foto_verificada'] = True
 
@@ -310,10 +317,21 @@ class ValidadorImagem:
                 return
             self.__menssagem_index_error(msg='Nao possivel volta.')
 
-    def main(self):
-        """Metodo principal, executa a o objeto inteiro.
-        """
+    # Atualizar a função __change_color para aplicar a cor ao botão correspondente
+    def __change_color(self, button=None, color: str = 'yellow'):
+        """Altera a cor de um botão específico ou reseta as cores."""
+        if button:
+            button.configure(fg_color=color)
+        else:
+            # Resetar cores de todos os botões
+            self.__botao_foto_marca_dagua.configure(fg_color='yellow')
+            self.__botao_foto_texto_img.configure(fg_color='yellow')
+            self.__botao_foto_fundo_neutro.configure(fg_color='yellow')
+            self.__botao_foto_logo.configure(fg_color='yellow')
+            self.__botao_foto_carro.configure(fg_color='yellow')
 
+    def main(self):
+        """Método principal, executa o objeto inteiro."""
         rprint(self.__index_config)
 
         if self.__primeira_foto:
@@ -323,7 +341,7 @@ class ValidadorImagem:
 
         botao_proxima_foto = CTkButton(
             self.__frame_botoes,
-            text='Proxima',
+            text='Próxima',
             fg_color='green',
             command=lambda: self.__janela(
                 proxima_foto=True,
@@ -344,69 +362,64 @@ class ValidadorImagem:
         )
         botao_foto_anterior.pack(side='left', padx=5, pady=5)
 
-        botao_foto_marca_dagua = CTkButton(
+        self.__botao_foto_marca_dagua = CTkButton(
             self.__frame_botoes,
-            text="Marca d'agua",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                marca_dagua=True
-            )
+            text="Marca d'água",
+            command=lambda: [
+                self.__janela(marca_dagua=True),
+                self.__change_color(self.__botao_foto_marca_dagua, 'purple')
+            ]
         )
-        botao_foto_marca_dagua.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_marca_dagua.pack(side='bottom', padx=5, pady=5)
 
-        botao_foto_texto_img = CTkButton(
+        self.__botao_foto_texto_img = CTkButton(
             self.__frame_botoes,
             text="Texto na imagem",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                texto_img=True
-            )
+            command=lambda: [
+                self.__janela(texto_img=True),
+                self.__change_color(self.__botao_foto_texto_img, 'purple')
+            ]
         )
-        botao_foto_texto_img.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_texto_img.pack(side='bottom', padx=5, pady=5)
 
-        botao_foto_fundo_neutro = CTkButton(
+        self.__botao_foto_fundo_neutro = CTkButton(
             self.__frame_botoes,
             text="Fundo neutro",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                fundo_neutro=True
-            )
+            command=lambda: [
+                self.__janela(fundo_neutro=True),
+                self.__change_color(self.__botao_foto_fundo_neutro, 'purple')
+            ]
         )
-        botao_foto_fundo_neutro.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_fundo_neutro.pack(side='bottom', padx=5, pady=5)
 
-        botao_foto_logo = CTkButton(
+        self.__botao_foto_logo = CTkButton(
             self.__frame_botoes,
             text="Logo",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                logo=True
-            )
+            command=lambda: [
+                self.__janela(logo=True),
+                self.__change_color(self.__botao_foto_logo, 'purple')
+            ]
         )
-        botao_foto_logo.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_logo.pack(side='bottom', padx=5, pady=5)
 
-        botao_foto_logo = CTkButton(
+        self.__botao_foto_carro = CTkButton(
             self.__frame_botoes,
             text="Carro",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                carro=True
-            )
+            command=lambda: [
+                self.__janela(carro=True),
+                self.__change_color(self.__botao_foto_carro, 'purple')
+            ]
         )
-        botao_foto_logo.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_carro.pack(side='bottom', padx=5, pady=5)
 
         self.__root.mainloop()
 
 if __name__ == '__main__':
     # DIRETORIO_FOTOS: str = 'C:/Users/jeferson.lopes/ownCloud - Jeferson Lopes@cloud.pecista.com.br/takao'
     # DIRETORIO_FOTOS: str = 'C:/Users/jeferson.lopes/ownCloud - Jeferson Lopes@cloud.pecista.com.br/projeto_clonagem/takao'
-    DIRETORIO_FOTOS: str = './out_files_photos/monroe'
+    DIRETORIO_FOTOS: str = './out_files_photos/totalenergies'
     DIRETORIO_DATAFRAME: str = ''
-    validador: ValidadorImagem = ValidadorImagem(DIRETORIO_FOTOS, 'monroe')
-    # validador.created_data_frame()
+    validador: ValidadorImagem = ValidadorImagem(DIRETORIO_FOTOS, 'totalenergies')
+    validador.created_data_frame()
     validador.ler_dataframe()
     validador.main()

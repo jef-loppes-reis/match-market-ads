@@ -45,15 +45,14 @@ class AnunciosLojaOficial:
             _description_
         """
         list_pages: list[str] = []
-        paginas: list[str] = self._site_loja_oficial.find_all(
+        paginas: list[BeautifulSoup] = self._site_loja_oficial.find_all(
             self._link_num_pagina[0],
             self._link_num_pagina[1]
         )
         for x in paginas:
-            if 'href' in x.find('a'):
-                page = x.find('a')['href']
-                if page is None or page != '':
-                    list_pages.append(page)
+            __href_page: str = x.find('a', class_='andes-pagination__link').get('href')
+            if not __href_page is None:
+                list_pages.append(__href_page)
         return list_pages
 
     def entrar_pagina(self, client: Client, url: str) -> BeautifulSoup:
