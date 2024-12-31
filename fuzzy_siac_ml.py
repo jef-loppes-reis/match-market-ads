@@ -105,38 +105,34 @@ class Main:
 
     def infos_lojas_oficiais(self, url: str):
         """Busca e organiza informações dos anúncios na página da loja."""
-        try:
-            with Client() as client:
-                rprint({'Link loja': url})
-                page_content = client.get(url, timeout=None).content
-                site_data = bs4.BeautifulSoup(page_content, 'html.parser')
+        # try:
+        with Client() as client:
+            rprint({'Link loja': url})
+            page_content = client.get(url, timeout=None).content
+            site_data = bs4.BeautifulSoup(page_content, 'html.parser')
 
-                anuncios = AnunciosLojaOficial(site_data).pegar_link_anuncios()
-                for col, data in anuncios.items():
-                    self._df_lojas_oficiais[col] = Series(data)
+            anuncios = AnunciosLojaOficial(site_data).pegar_link_anuncios()
+            for col, data in anuncios.items():
+                self._df_lojas_oficiais[col] = Series(data)
 
-        except Exception as e:
-            rprint(f"Erro ao buscar informações da loja oficial: {e}")
-            raise ValueError() from e
+        # except Exception as e:
+        #     rprint(f"Erro ao buscar informações da loja oficial: {e}")
+        #     raise ValueError() from e
 
     def informacoes_anuncios_api(self):
         """Obtém dados dos anúncios via API e popula o DataFrame."""
-        try:
-            self._df_lojas_oficiais['lista_infos_mlb'] = PegarInfosAnuncioApi(
-                self._ml).pegar_infos_api(self._df_lojas_oficiais['lista_mlbs'].to_list())
-            self._df_lojas_oficiais['compat'] = PegarInfosAnuncioApi(
-                self._ml).check_compatibilities(self._df_lojas_oficiais['lista_mlbs'])
+        self._df_lojas_oficiais['lista_infos_mlb'] = PegarInfosAnuncioApi(
+            self._ml).pegar_infos_api(self._df_lojas_oficiais['lista_mlbs'].to_list())
 
-            # Processa atributos necessários
-            self._df_lojas_oficiais['lista_att_necessarios'] = [
-                dumps(PegarInfosAnuncioApi(self._ml).pegar_atributos_necessarios(loads(atts)))
-                for atts in self._df_lojas_oficiais['lista_infos_mlb']
-            ]
-            self._df_infos_mlb = self._df_lojas_oficiais.reset_index(drop=True)
+        self._df_lojas_oficiais['compat'] = PegarInfosAnuncioApi(
+            self._ml).check_compatibilities(self._df_lojas_oficiais['lista_mlbs'])
 
-        except Exception as e:
-            rprint(f"[red]ERRO: Erro ao obter informações dos anúncios via API: {e}[/red]")
-            raise ValueError() from e
+        # Processa atributos necessários
+        self._df_lojas_oficiais['lista_att_necessarios'] = [
+            dumps(PegarInfosAnuncioApi(self._ml).pegar_atributos_necessarios(atts))
+            for atts in self._df_lojas_oficiais['lista_infos_mlb']
+        ]
+        self._df_infos_mlb = self._df_lojas_oficiais.reset_index(drop=True)
 
     def get_infos_fuzzy(self, linha_produto: str):
         """Aplica comparações fuzzy para correlacionar produtos entre sistemas."""
@@ -232,7 +228,8 @@ class Main:
         ).copy()
 
         # Selecionar o melhor por 'mpn_ml'
-        top_results = df.groupby('mpn_ml', as_index=False).first()
+        # top_results = df.groupby('mpn_ml', as_index=False).first()
+        top_results = DataFrame(df.groupby('mpn_ml', as_index=False))
 
         return top_results
 
@@ -279,7 +276,7 @@ if __name__ == "__main__":
     main = Main(nome_loja=NOME_LOJA)
 
     for grupo in tqdm(
-        grupos.main()['grupo_subgrupo'][1:],
+        grupos.main()['grupo_subgrupo'][11:],
         desc=f'Grupos da {MARCA}:',
         colour='yellow'
     ):
@@ -287,19 +284,13 @@ if __name__ == "__main__":
         grupo_normalizado = sub(r'\s', '+', grupo.lower())
 
         main.reset_df_infos()
-
-        try:
-            main.infos_lojas_oficiais(
-                url=f'https://lista.mercadolivre.com.br/{grupo_normalizado.replace("+", "-")}_Loja_{NOME_LOJA}'
-                # url='https://lista.mercadolivre.com.br/_Loja_elf'
-            )
-            main.informacoes_anuncios_api()
-            main.get_infos_fuzzy(linha_produto=grupo)
-        except Exception as e:
-            rprint(f"Erro no processamento do grupo {grupo}: {e}")
-
-    (
-        main.juntar_resultados(marca=NOME_LOJA)
-        .to_excel(f'./total_produtos_{NOME_LOJA.lower()}.xlsx')
-    )
+        main.infos_lojas_oficiais(
+            url=f'https://lista.mercadolivre.com.br/{grupo_normalizado.replace("+", "-")}_Loja_{NOME_LOJA}'
+            # url='https://lista.mercadolivre.com.br/_Loja_elf'
+        )
+        main.informacoes_anuncios_api()
+        main.get_infos_fuzzy(linha_produto=grupo)
+        main.juntar_resultados(marca=NOME_LOJA).to_excel(
+            f'./total_produtos_{NOME_LOJA.lower()}.xlsx'
+        )
     # main.juntar_resultados(marca=NOME_LOJA)

@@ -57,42 +57,55 @@ class AnunciosLojaOficial:
 
     def entrar_pagina(self, client: Client, url: str) -> BeautifulSoup:
         """
-        entrar_pagina _summary_
+        Método para acessar uma página e retornar seu conteúdo como BeautifulSoup.
 
         Parameters
         ----------
         client : Client
-            _description_
+            Cliente HTTP para realizar a requisição.
         url : str
-            _description_
+            URL da página a ser acessada.
 
         Returns
         -------
         BeautifulSoup
-            _description_
+            Conteúdo da página em formato BeautifulSoup.
         """
-        tentativas: int = 0
-        while True:
-            if tentativas > 9:
-                return
+        for attempt in range(1, 11):  # Tentativas de 1 a 10
             try:
-                _res: Response = client.get(url=url, timeout=None)
-                if _res.status_code in [429, 500]:
-                    sleep(randint(15, 30))
-                    tentativas+=1
-                    print('[429, 500] - Tentativas:', tentativas)
-                    continue
-                return BeautifulSoup(_res, 'html.parser')
-            except (ConnectionError, ReadError):
-                sleep(randint(15, 30))
-                tentativas+=1
-                print('[Erro de conexao] - Tentativas:', tentativas)
-                continue
+                _res: Response = client.get(url=url, timeout=10)  # Define um timeout para evitar bloqueios
+                if _res.is_success:
+                    return BeautifulSoup(_res.text, 'html.parser')  # Use .text para conteúdo HTML
+                elif _res.is_server_error:
+                    delay = randint(10, 15)
+                    rprint('[purple]\n[Method - Entrar na página][/purple]')
+                    rprint(f'[yellow]Aviso: Erro de servidor [{_res.status_code}]. Tentativa {attempt}/10, tentando novamente em {delay}s...[/yellow]')
+                    sleep(delay)
+                elif _res.is_client_error:
+                    rprint('[purple]\n[Method - Entrar na página][/purple]')
+                    rprint(f'[yellow]Erro cliente [{_res.status_code}].[/yellow]')
+                    if _res.status_code == 429:  # Too Many Requests
+                        delay = randint(3, 10)
+                        rprint(f'[yellow]Aviso: Limite de requisições atingido. Tentativa {attempt}/10, tentando novamente em {delay}s...[/yellow]')
+                        sleep(delay)
+                    else:
+                        rprint(f'[red]Erro cliente não recuperável: [{_res.status_code}][/red]')
+                        rprint(f'[yellow]URL: {url}[/yellow]')
+                        rprint(_res.json())
+                        raise ValueError(f"Erro cliente não recuperável: {_res.status_code}")
             except ReadTimeout:
-                sleep(randint(15, 30))
-                tentativas+=1
-                print('[TimeOut] - Tentativas:', tentativas)
-                continue
+                delay = randint(15, 30)
+                rprint('[purple]\n[Method - Entrar na página][/purple]')
+                rprint(f'[yellow]Erro: Tempo limite de leitura. Tentativa {attempt}/10, tentando novamente em {delay}s...[/yellow]')
+                sleep(delay)
+            except Exception as e:
+                delay = randint(15, 30)
+                rprint('[purple]\n[Method - Entrar na página][/purple]')
+                rprint(f'[yellow]Erro inesperado: {e}. Tentativa {attempt}/10, tentando novamente em {delay}s...[/yellow]')
+                sleep(delay)
+        rprint('[purple]\n[Method - Entrar na página][/purple]')
+        rprint(f'[red]Erro: Número de tentativas excedido após 10 tentativas para URL: {url}.[/red]')
+        return BeautifulSoup('', 'html.parser')  # Retorna um objeto BeautifulSoup vazio
 
     def pegar_numero_vendas(self, client: Client, url_anuncio: str) -> tuple[str, str]:
         page_anuncio: BeautifulSoup = self.entrar_pagina(
@@ -100,23 +113,27 @@ class AnunciosLojaOficial:
             url_anuncio
         )
         try:
-            vendas: str = page_anuncio.find(
-                'span', {'class': 'ui-pdp-subtitle'}
-            ).text
-            mlb: str = page_anuncio.find(
-                'span', {'class': 'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'}
-            ).text
+            vendas: str = page_anuncio.find('span', {'class': 'ui-pdp-subtitle'}).text
+            mlb: str = page_anuncio.find('span', {'class': 'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'}).text
             mlb: str = mlb.replace('#', '')
             mlb: str = f'MLB{mlb}'
 
-            vendas_copy: list[str] = findall(
-                pattern=r'\d+', string=vendas)
+            vendas_copy: list[str] = findall(pattern=r'\d+', string=vendas)
             if len(vendas_copy) > 0:
                 return (vendas_copy[0], mlb)
-            return ('0', mlb)
-        except Exception as e:
-            rprint(page_anuncio, e)
-            return ('0', mlb)
+            vendas: str = '0'
+            return (vendas, mlb)
+        except AttributeError: # Caso nao exista a tag de venda.
+            mlb: str = page_anuncio.find('span', {'class': 'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'}).text
+            mlb: str = mlb.replace('#', '')
+            mlb: str = f'MLB{mlb}'
+            vendas: str = '0'
+            # rprint({
+            #     'MLB': page_anuncio.find('span', {'class': 'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'}),
+            #     'vendas': page_anuncio.find('span', {'class': 'ui-pdp-subtitle'})
+            # })
+            # rprint(f'[purple]\n[Method - Pegar numero de vendas]: {e}[/purple]')
+            return (vendas, mlb)
 
     def _extrair_texto_tag(self,
                            anuncio: BeautifulSoup,
@@ -164,11 +181,12 @@ class AnunciosLojaOficial:
                         desc=f'Get infos anuncios page nº{num_page}.: '
                     ):
                         # Extrai o link do anúncio
-                        _link_anuncio: str = anuncio.find('a')['href']
+                        _link_anuncio: str = anuncio.find('a').get('href')
+                        # rprint(f'[yellow]Link do anuncio: {_link_anuncio}[/yellow]')
                         lista_link_anuncios.append(_link_anuncio)
 
                         # Pausa randômica para evitar bloqueios
-                        sleep(randint(0, 5))
+                        sleep(randint(2, 5))
 
                         # Extrai vendas e identificador do anúncio (MLB)
                         _vendas, _mlb = self.pegar_numero_vendas(
