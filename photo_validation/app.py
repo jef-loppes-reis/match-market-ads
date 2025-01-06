@@ -1,34 +1,82 @@
-from os import path, listdir, system, makedirs
-import tkinter as tk
-from tkinter import messagebox
+from os import system
+from os import makedirs
 
+import customtkinter as ctk
+from customtkinter import CTkButton, CTkImage
+from CTkMessagebox import CTkMessagebox
 from PIL import Image, ImageTk, ImageFile
-from pandas import DataFrame, Series, read_feather
 from rich import print as rprint
+from pandas import DataFrame, read_feather
+from os import path, listdir
+from re import sub
 
 
-class App:
-    """_summary_
-    """
+class ValidadorImagem:
 
-    __df_default = DataFrame()
+    __columns_default: list[str] = [
+        'nome_arquivo_foto',
+        'codigo_referencia',
+        'endereco',
+        'extensao',
+        'extensao_valida',
+        'pegar_foto',
+        'foto_verificada',
+        'marca_dagua',
+        'texto',
+        'fundo_neutro',
+        'logo',
+        'carro'
+    ]
+
+    __extencoes: tuple[str] = (
+        '.jpg',
+        '.JPG',
+        '.png',
+        '.PNG',
+        '.jpeg',
+        '.JPEG'
+    )
+
+    __df_default: DataFrame = DataFrame(columns=__columns_default)
+    __df_conferencia: DataFrame = DataFrame()
+    __df_copy: DataFrame = DataFrame()
 
     # Configuracoes da janela
-    __root = tk.Tk()
+    __root: ctk.CTk = ctk.CTk()
 
     # Criando um rótulo para a imagem
-    __label_imagem = tk.Label(__root)
+    __label_imagem: ctk.CTkLabel = ctk.CTkLabel(__root, text='')
     __label_imagem.pack(pady=10)
 
+    # Criando um rotulo para texto
+    __label_mensagem: ctk.CTkLabel = ctk.CTkLabel(
+        __root,
+        text='"Selecionar caso a foto tenha os seguintes problemas:"',
+        font=('Arial', 16),
+        anchor='se'
+    )
+    __label_mensagem.pack(padx=200, anchor='se')
+
     # Botões "Sim" e "Não"
-    __frame_botoes = tk.Frame(__root)
+    __frame_botoes = ctk.CTkFrame(__root)
     __frame_botoes.pack(pady=5)
 
-    # Painal dos indices
-    __index_label = tk.Label(__root, text="", font=('Arial', 12))
-    __index_label.pack(side='bottom', anchor='se', padx=10, pady=10)
+    # Botoes opcoes
+    __botao_foto_marca_dagua: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_texto_img: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_fundo_neutro: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_logo: CTkButton = CTkButton(__frame_botoes)
+    __botao_foto_carro: CTkButton = CTkButton(__frame_botoes)
+    __button_fg_color_default: tuple[str] = ['#3B8ED0', '#1F6AA5']
 
-    __index_config = {
+    # Painal dos indices
+    __index_label: ctk.CTkLabel = ctk.CTkLabel(
+        __root,
+        text="",
+        font=('Arial', 12)
+    )
+    __index_label.pack(side='bottom', anchor='se', padx=10, pady=10)
+    __index_config: dict[str, int] = {
         'trava_do_indice': 0,
         'indice_atual': 0,
         'ultimo_indece': 0,
@@ -38,70 +86,18 @@ class App:
     __primeira_foto: bool = True
     __marca_dagua: bool = False
     __texto_img: bool = False
+    __fundo_neutro: bool = False
+    __logo: bool = False
+    __carro: bool = False
 
-    def __init__(self, loja: str) -> None:
-        self.__df_genuino: DataFrame = DataFrame()
-        self.__df_copy: DataFrame = DataFrame()
-        self.__loja: str = loja
-        self.__path_files_photos: str = path.join(
-            path.dirname(__file__), f'out_files_photos/{self.__loja}')
-        self.__path_files_data: str = path.join(
-            path.dirname(__file__), f'out/{self.__loja}'
-        )
-
-    def created_new_dataframe(self):
-        """Metodo para criar a planilha principal da varificacao de fotos.
-        """
-
-        lista_fotos: list[str] = listdir(self.__path_files_photos)
-
-        _df_lista_fotos: DataFrame = Series(
-            lista_fotos).str.split('_', expand=True)
-        _df_lista_fotos[4] = lista_fotos
-
-        self.__df_default: DataFrame = DataFrame(columns=[
-            'mlb',
-            'verifeid_photo',
-            'pegar_foto',
-            'marca_dagua',
-            'texto_na_foto',
-        ])
-        self.__df_default['mlb'] = _df_lista_fotos.iloc[:, 0]
-        self.__df_default.loc[:, 'path_file_photo'] = lista_fotos
-        self.__df_default.loc[:, 'verifeid_photo'] = False
-        self.__df_default.loc[:, 'pegar_foto'] = False
-        self.__df_default.loc[:, 'marca_dagua'] = False
-        self.__df_default.loc[:, 'texto_na_foto'] = False
-
-        self.__df_default.to_feather(f'./out/conferencia_fotos_{self.__loja}.feather')
-        self.__df_default.to_csv(f'./out/conferencia_fotos_{self.__loja}.csv', index=False)
-
-    def ler_dataframe(self):
-        """Metodo para ler uma planilha de checagem, o primeiro passo do projeto "Verificacao de
-        possiveis clonagens".
-        """
-        # self.__df_genuino = read_feather('./out/df_default.feather')
-        try:
-            self.__df_genuino = read_feather(
-                f'./out/conferencia_fotos_{self.__loja}.feather')
-        except FileNotFoundError:
-            self.__menssagem_index_error(
-                msg=f'./out/conferencia_fotos_{self.__loja}.feather\nChame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.'
-            )
-            rprint('[bright_yellow]Ops, nao encontrei a planilha de conferencia.[/bright_yellow]')
-            rprint('Chame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.')
-            raise
-        self.__df_copy = self.__df_genuino.query('~verifeid_photo').copy()
-        self.__mudar_indices(indices={
-            'trava_do_indice': self.__df_copy.index.to_list()[0],
-            'indice_atual': self.__df_copy.index.to_list()[0],
-            'ultimo_indece': self.__df_copy.index.to_list()[0],
-            'indice_maximo': self.__df_copy.index.to_list()[-1:][0]
-        })
+    def __init__(self, diretorio_fotos: str, fabricante: str) -> None:
+        self._diretorio_fotos: str = diretorio_fotos
+        self._fabricante: str = fabricante
+        # makedirs(self._diretorio_fotos, exist_ok=True)
 
     @classmethod
-    def __mudar_indices(self, indices: dict[str, int]):
-        self.__index_config.update(indices)
+    def __mudar_indices(cls, indices: dict[str, int]):
+        cls.__index_config.update(indices)
 
     @classmethod
     def __alternar_indice(cls, avancar: False) -> None:
@@ -124,12 +120,65 @@ class App:
             }
         )
 
-    def __mostrar_imagem(self) -> ImageTk.PhotoImage:
-        path_dir_img = self.__df_copy.loc[
-            self.__index_config.get('indice_atual'), 'path_file_photo']
+    def created_data_frame(self):
+        from pandas import Series
+        _lista_fotos: list[str] = listdir(self._diretorio_fotos)
 
-        _img: ImageFile = Image.open(
-            f'./out_files_photos/{self.__loja}/{path_dir_img}')
+        _df_lista_fotos: DataFrame = Series(
+            _lista_fotos).str.split('_', expand=True)
+        _df_lista_fotos[4] = _lista_fotos
+
+        self.__df_default['mlb'] = None
+        self.__df_default['nome_arquivo_foto'] = _lista_fotos
+        self.__df_default['endereco'] = _lista_fotos
+        self.__df_default['foto_verificada'] = False
+        self.__df_default['marca_dagua'] = False
+        self.__df_default['texto'] = False
+        self.__df_default['fundo_neutro'] = False
+        self.__df_default['logo'] = False
+        self.__df_default['carro'] = False
+
+        self.__df_default['mlb'] = _df_lista_fotos.iloc[:, 0]
+        self.__df_default.loc[:, 'extensao_valida'] = (
+            self.__df_default['nome_arquivo_foto'].str.endswith(
+                self.__extencoes)
+        )
+        makedirs(f'./out_files_dataframe/{self._fabricante}', exist_ok=True)
+        self.__df_default.iloc[:,:].to_feather(f'./out_files_dataframe/{self._fabricante}/conferencia_fotos_{self._fabricante}.feather')
+        self.__df_default.iloc[:,:].to_csv(f'./out_files_dataframe/{self._fabricante}/conferencia_fotos_{self._fabricante}.csv', index=False)
+        rprint(self.__df_default)
+
+    def ler_dataframe(self):
+        """Metodo para ler uma planilha de checagem, o primeiro passo do projeto "Verificacao de
+        possiveis clonagens".
+        """
+        # self.__df_conferencia = read_feather('./out/df_default.feather')
+        try:
+            self.__df_conferencia = read_feather(
+                f'./out_files_dataframe/{self._fabricante}/conferencia_fotos_{self._fabricante}.feather')
+        except FileNotFoundError:
+            __mensagem_erro: str = '\nChame o metodo "created_data_frame", ele vai criar uma planilha de conferencia.'
+            self.__menssagem_index_error(
+                msg=f'[./out_files_dataframe/{self._fabricante}/conferencia_fotos_{self._fabricante}.feather] {__mensagem_erro}'
+            )
+            rprint('[bright_yellow]Ops, nao encontrei a planilha de conferencia.[/bright_yellow]')
+            rprint('Chame o metodo "created_new_dataframe", ele vai criar uma planilha de conferencia.')
+            raise
+        self.__df_copy: DataFrame = self.__df_conferencia.copy()
+        self.__mudar_indices(indices={
+            'trava_do_indice': self.__df_copy.query('~foto_verificada').index.to_list()[0],
+            'indice_atual': self.__df_copy.query('~foto_verificada').index.to_list()[0],
+            'ultimo_indece': self.__df_copy.query('~foto_verificada').index.to_list()[0],
+            'indice_maximo': self.__df_copy.query('~foto_verificada').index.to_list()[-1:][0]
+        })
+
+    def __mostrar_imagem(self) -> CTkImage:
+        path_dir_img = self.__df_copy.loc[
+            self.__index_config.get('indice_atual'),
+            'endereco'
+        ]
+
+        _img: ImageFile = Image.open(f'{self._diretorio_fotos}/{path_dir_img}')
 
         image_height: int = 500
         ratio: float = image_height / float(_img.height)
@@ -137,32 +186,53 @@ class App:
 
         _img: Image = _img.resize((image_width, image_height))
 
-        _img = ImageTk.PhotoImage(_img)
+        _ctk_img = CTkImage(
+            light_image=_img,
+            dark_image=_img,
+            size=(_img.width, _img.height)
+        )
 
-        self.__label_imagem.config(image=_img)
-        self.__label_imagem.image = _img
+        self.__label_imagem.configure(image=_ctk_img)
+        self.__label_imagem.image = _ctk_img
 
     def __mostrar_indices(self):
-        self.__index_label.config(
-            text=f"Índice: {
-                self.__index_config.get('indice_atual')
-            } de {self.__index_config.get('indice_maximo')}")
+        self.__index_label.configure(
+            text=f"Índice: {self.__index_config.get('indice_atual')} de {self.__index_config.get('indice_maximo')}"
+        )
 
     def __menssagem_index_error(self, msg: str):
-        messagebox.showerror(
+        CTkMessagebox(
             title='Erro!',
             message=msg
         )
 
     def __save_data(self):
-        self.__df_copy.to_csv(f'./out/conferencia_fotos_{self.__loja}.csv', index=False)
-        self.__df_copy.to_feather(f'./out/conferencia_fotos_{self.__loja}.feather')
+        self.__df_copy.to_csv(f'./out_files_dataframe/{self._fabricante}/conferencia_fotos_{self._fabricante}.csv', index=False)
+        self.__df_copy.to_feather(f'./out_files_dataframe/{self._fabricante}/conferencia_fotos_{self._fabricante}.feather')
+
+    def __mudar_status_marca_dagua(self, value: bool):
+        self.__marca_dagua = value
+
+    def __mudar_status_texto_img(self, value: bool):
+        self.__texto_img = value
+
+    def __mudar_status_fundo_neutro(self, value: bool):
+        self.__fundo_neutro = value
+
+    def __mudar_status_logo(self, value: bool):
+        self.__logo = value
+
+    def __mudar_status_carro(self, value: bool):
+        self.__carro = value
 
     def __janela(self,
                  proxima_foto: bool = False,
                  voltar: bool = False,
                  marca_dagua: bool = False,
-                 texto_img: bool = False):
+                 texto_img: bool = False,
+                 fundo_neutro: bool = False,
+                 logo: bool = False,
+                 carro: bool = False):
         """Metodo de interecao com a janela do Tkinter.
 
         Args:
@@ -178,13 +248,25 @@ class App:
             self.__mudar_status_marca_dagua(True)
         if texto_img:
             self.__mudar_status_texto_img(True)
+        if fundo_neutro:
+            self.__mudar_status_fundo_neutro(True)
+        if logo:
+            self.__mudar_status_logo(True)
+        if carro:
+            self.__mudar_status_carro(True)
 
         if proxima_foto:
+            self.__change_color(color=None)
             self.__df_copy.loc[self.__index_config.get(
-                'indice_atual'), 'verifeid_photo'] = True
+                'indice_atual'), 'foto_verificada'] = True
 
             self.__df_copy.loc[self.__index_config.get(
-                'indice_atual'), 'pegar_foto'] = not any([self.__marca_dagua, self.__texto_img])
+                'indice_atual'), 'pegar_foto'] = not any(
+                    [self.__marca_dagua,
+                     self.__texto_img,
+                     self.__fundo_neutro,
+                     self.__logo]
+                )
 
             self.__df_copy.loc[self.__index_config.get(
                 'indice_atual'), 'marca_dagua'] = self.__marca_dagua
@@ -192,42 +274,86 @@ class App:
             self.__df_copy.loc[self.__index_config.get(
                 'indice_atual'), 'texto_na_foto'] = self.__texto_img
 
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'fundo_neutro'] = self.__fundo_neutro
+
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'logo'] = self.__logo
+
+            self.__df_copy.loc[self.__index_config.get(
+                'indice_atual'), 'carro'] = self.__carro
+
             self.__save_data()
+
             self.__alternar_indice(avancar=True)
             self.__mostrar_imagem()
             self.__mostrar_indices()
+            # Muda os status de todas os atributos para FALSO.
             self.__mudar_status_marca_dagua(False)
             self.__mudar_status_texto_img(False)
+            self.__mudar_status_fundo_neutro(False)
+            self.__mudar_status_logo(False)
+            self.__mudar_status_carro(False)
+            # system('cls')
+            rprint(self.__df_copy.query('foto_verificada').tail(3))
             return
 
         if voltar:
+            self.__change_color(color=None)
             if self.__index_config.get('indice_atual') > 0:
                 self.__alternar_indice(avancar=False)
+                # Muda os status de todas os atributos para FALSO.
                 self.__mudar_status_marca_dagua(False)
                 self.__mudar_status_texto_img(False)
-                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'verifeid_photo'] = False
-                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'pegar_foto'] = False
-                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'marca_dagua'] = self.__marca_dagua
-                self.__df_copy.loc[self.__index_config.get('indice_atual'), 'texto_na_foto'] = self.__texto_img
+                self.__mudar_status_fundo_neutro(False)
+                self.__mudar_status_logo(False)
+                self.__mudar_status_carro(False)
+                # Fluxo de indice
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'foto_verificada'] = False
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'pegar_foto'] = False
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'marca_dagua'] = self.__marca_dagua
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'texto_na_foto'] = self.__texto_img
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'fundo_neutro'] = self.__fundo_neutro
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'logo'] = self.__logo
+                self.__df_copy.loc[self.__index_config.get('indice_atual'),
+                                   'carro'] = self.__carro
                 self.__save_data()
                 self.__mostrar_imagem()
                 self.__mostrar_indices()
+                # Muda os status de todas os atributos para FALSO.
+                self.__mudar_status_marca_dagua(False)
+                self.__mudar_status_texto_img(False)
+                self.__mudar_status_fundo_neutro(False)
+                self.__mudar_status_logo(False)
+                self.__mudar_status_carro(False)
+                system('cls')
+                rprint(self.__df_copy.query('foto_verificada').tail(3))
                 return
             self.__menssagem_index_error(msg='Nao possivel volta.')
 
-    def __mudar_status_marca_dagua(self, value: bool):
-        self.__marca_dagua = value
+    # Atualizar a função __change_color para aplicar a cor ao botão correspondente
+    def __change_color(self, button=None, color: str = None):
+        """Altera a cor de um botão específico ou reseta as cores."""
+        if button:
+            button.configure(fg_color=color)
+        else:
+            # Resetar cores de todos os botões
+            color=self.__button_fg_color_default
+            self.__botao_foto_marca_dagua.configure(fg_color=color)
+            self.__botao_foto_texto_img.configure(fg_color=color)
+            self.__botao_foto_fundo_neutro.configure(fg_color=color)
+            self.__botao_foto_logo.configure(fg_color=color)
+            self.__botao_foto_carro.configure(fg_color=color)
 
-    def __mudar_status_texto_img(self, value: bool):
-        self.__texto_img = value
-
+    # Adicionar referências aos botões na função `main`
     def main(self):
-        """Metodo principal, executa a o objeto inteiro.
-        """
-
-        if not path.exists(self.__path_files_data):
-            self.created_new_dataframe()
-
+        """Método principal, executa o objeto inteiro."""
         rprint(self.__index_config)
 
         if self.__primeira_foto:
@@ -235,10 +361,10 @@ class App:
             self.__mostrar_imagem()
             self.__mostrar_indices()
 
-        botao_proxima_foto = tk.Button(
+        botao_proxima_foto = CTkButton(
             self.__frame_botoes,
-            text='Proxima Foto',
-            # bg='green',
+            text='Próxima',
+            fg_color='green',
             command=lambda: self.__janela(
                 proxima_foto=True,
                 voltar=False
@@ -246,63 +372,75 @@ class App:
         )
         botao_proxima_foto.pack(side='right', padx=5, pady=5)
 
-        botao_foto_anterior = tk.Button(
+        botao_foto_anterior = CTkButton(
             self.__frame_botoes,
             text='Anterior',
+            fg_color='yellow',
+            text_color='black',
             command=lambda: self.__janela(
                 proxima_foto=False,
                 voltar=True
             )
         )
-        botao_foto_anterior.pack(side='bottom', padx=5, pady=5)
+        botao_foto_anterior.pack(side='left', padx=5, pady=5)
 
-        botao_foto_marca_dagua = tk.Button(
+        self.__botao_foto_marca_dagua = CTkButton(
             self.__frame_botoes,
-            text="Marca d'agua",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                marca_dagua=True
-            )
+            text="Marca d'água",
+            command=lambda: [
+                self.__janela(marca_dagua=True),
+                self.__change_color(self.__botao_foto_marca_dagua, 'purple')
+            ]
         )
-        botao_foto_marca_dagua.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_marca_dagua.pack(side='bottom', padx=5, pady=5)
 
-        botao_foto_texto_img = tk.Button(
+        self.__botao_foto_texto_img = CTkButton(
             self.__frame_botoes,
             text="Texto na imagem",
-            command=lambda: self.__janela(
-                proxima_foto=False,
-                voltar=False,
-                texto_img=True
-            )
+            command=lambda: [
+                self.__janela(texto_img=True),
+                self.__change_color(self.__botao_foto_texto_img, 'purple')
+            ]
         )
-        botao_foto_texto_img.pack(side='bottom', padx=5, pady=5)
+        self.__botao_foto_texto_img.pack(side='bottom', padx=5, pady=5)
+
+        self.__botao_foto_fundo_neutro = CTkButton(
+            self.__frame_botoes,
+            text="Fundo neutro",
+            command=lambda: [
+                self.__janela(fundo_neutro=True),
+                self.__change_color(self.__botao_foto_fundo_neutro, 'purple')
+            ]
+        )
+        self.__botao_foto_fundo_neutro.pack(side='bottom', padx=5, pady=5)
+
+        self.__botao_foto_logo = CTkButton(
+            self.__frame_botoes,
+            text="Logo",
+            command=lambda: [
+                self.__janela(logo=True),
+                self.__change_color(self.__botao_foto_logo, 'purple')
+            ]
+        )
+        self.__botao_foto_logo.pack(side='bottom', padx=5, pady=5)
+
+        self.__botao_foto_carro = CTkButton(
+            self.__frame_botoes,
+            text="Carro",
+            command=lambda: [
+                self.__janela(carro=True),
+                self.__change_color(self.__botao_foto_carro, 'purple')
+            ]
+        )
+        self.__botao_foto_carro.pack(side='bottom', padx=5, pady=5)
 
         self.__root.mainloop()
 
-
 if __name__ == '__main__':
-
-    rprint('\nDigite o nome da loja: ')
-    NOME_LOJA: str = input()
-    while True:
-        rprint(f'[bright_yellow]Nome da loja informada [bright_magenta]{NOME_LOJA.upper()}[/bright_magenta][/bright_yellow]')
-        rprint('[bright_yellow]Esta comecando a conferencia agora? Ou deseja continuar de onde parou?[/bright_yellow]')
-        rprint('1. Inicio.\n2. Continuar.')
-        flag: int = int(input())
-        match flag:
-            case 1:
-                INICIO: bool = True
-            case 2:
-                INICIO: bool = False
-            case _:
-                system('cls')
-                rprint(f'[blue]{flag}[/blue] [red]e uma opcao nao valida![/red]')
-                continue
-        break
-
-    app = App(loja=NOME_LOJA)
-    if INICIO:
-        app.created_new_dataframe()
-    app.ler_dataframe()
-    app.main()
+    # DIRETORIO_FOTOS: str = 'C:/Users/jeferson.lopes/ownCloud - Jeferson Lopes@cloud.pecista.com.br/takao'
+    # DIRETORIO_FOTOS: str = 'C:/Users/jeferson.lopes/ownCloud - Jeferson Lopes@cloud.pecista.com.br/projeto_clonagem/takao'
+    DIRETORIO_FOTOS: str = './out_files_photos/gauss'
+    validador: ValidadorImagem = ValidadorImagem(DIRETORIO_FOTOS, 'gauss')
+    validador.created_data_frame()
+    validador.ler_dataframe()
+    validador.main()

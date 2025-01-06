@@ -2,6 +2,7 @@
 from re import findall
 from time import sleep
 from random import randint
+from math import inf, isinf
 
 from bs4 import BeautifulSoup
 from httpx import Client, Response, ReadError, ReadTimeout
@@ -28,14 +29,14 @@ class AnunciosLojaOficial:
     )
     _class_tag_avaliacao: tuple[str, dict[str, str]] = (
         'span',
-        {'class', 'ui-search-reviews__rating-number'}
+        {'class', 'poly-reviews__rating'}
     )
 
     def __init__(self, site_loja_oficial: BeautifulSoup) -> None:
         self._site_loja_oficial = site_loja_oficial
 
 
-    def lista_link_paginas_seller(self) -> list[str]:
+    def lista_link_paginas_seller(self, limit: int = inf) -> list[str]:
         """
         lista_link_paginas_seller _summary_
 
@@ -49,6 +50,8 @@ class AnunciosLojaOficial:
             self._link_num_pagina[0],
             self._link_num_pagina[1]
         )
+        if not isinf(limit):
+            paginas: list[BeautifulSoup] = paginas[:limit]
         for x in paginas:
             __href_page: str = x.find('a', class_='andes-pagination__link').get('href')
             if not __href_page is None:
@@ -143,7 +146,7 @@ class AnunciosLojaOficial:
         tag = anuncio.find(tag_class[0], tag_class[1])
         return tag.text if tag is not None else default
 
-    def pegar_link_anuncios(self) -> dict[str, list[str] | list[float]]:
+    def pegar_link_anuncios(self, limit_ads: int = inf, limit_pages: int = inf) -> dict[str, list[str] | list[float]]:
         """
         Função para extrair links e informações de anúncios de uma lista de páginas.
 
@@ -152,8 +155,9 @@ class AnunciosLojaOficial:
         dict[str, list[str] | list[float]]
             _description_
         """
-        lista_paginas: list[str] = self.lista_link_paginas_seller() or ['Unica']
-        rprint(f'\nQuantidade de paginas: {len(lista_paginas)}')
+        lista_paginas: list[str] = self.lista_link_paginas_seller(limit=limit_pages) or ['Unica']
+        num_total_paginas: int = len(lista_paginas)
+        rprint(f'\nQuantidade de paginas: {num_total_paginas}')
 
         # Inicializando listas para armazenar os dados
         lista_tag_mais_vendido: list[str | None] = []
@@ -170,15 +174,17 @@ class AnunciosLojaOficial:
                     if link_pagina != 'Unica'
                     else self._site_loja_oficial
                 )
-
                 # Itera sobre anúncios na página atual
                 anuncio: BeautifulSoup = BeautifulSoup()
-                for lista_anuncios in driver_anuncios.find_all(
-                    self._anuncios[0], self._anuncios[1]
-                ):
+                lista_anuncios: list[list[BeautifulSoup]] = driver_anuncios.find_all(self._anuncios[0], self._anuncios[1])
+                # Itera sobre cada pagina da lista.
+                for __anuncios in lista_anuncios:
+                     # Determina um numero limite de anuncios a ser iterado
+                    __anuncios = list(__anuncios)[:limit_ads] if not isinf(limit_ads) else __anuncios
+                    # Itera sobre cada anuncio da pagina.
                     for anuncio in tqdm(
-                        iterable=lista_anuncios,
-                        desc=f'Get infos anuncios page nº{num_page}.: '
+                        iterable=__anuncios,
+                        desc=f'Ad information page {num_page}/{num_total_paginas}.: '
                     ):
                         # Extrai o link do anúncio
                         _link_anuncio: str = anuncio.find('a').get('href')
@@ -220,7 +226,7 @@ if __name__ == '__main__':
 
     with Client() as client:
         driver_response = client.get(
-            url='https://lista.mercadolivre.com.br/rele_Loja_bosch-autopecas_NoIndex_True#D[A:rele,on]',
+            url='https://lista.mercadolivre.com.br/loja/hipervarejo/',
             timeout=None
         )
 
@@ -229,4 +235,4 @@ if __name__ == '__main__':
     anuncios_loja_oficial.lista_link_paginas_seller()
     # rprint(driver.find('ol', {'class': 'ui-search-layout ui-search-layout--grid'}))
     # rprint(anuncios_loja_oficial.pegar_link_anuncios().get('lista_tag_mais_vendido'))
-    rprint(anuncios_loja_oficial.pegar_link_anuncios())
+    rprint(anuncios_loja_oficial.pegar_link_anuncios(limit_pages=1, limit_ads=10))

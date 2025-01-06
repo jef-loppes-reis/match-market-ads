@@ -72,7 +72,10 @@ class PegarInfosAnuncioApi:
                                     rprint(f'[yellow]Aviso: Limite de requisições atingido. Tentativa {attempt}/10, tentando novamente em {delay}s...[/yellow]')
                                     sleep(delay)
                                 case 401:
+                                    delay = randint(3, 10)
                                     rprint(f'[yellow]Aviso: Token vencido. Tentativa {attempt}/10, tentando novamente em {delay}s...[/yellow]')
+                                    sleep(delay)
+                                    self._ml_interface.refresh_token()
                                     self._headers: dict[str, str] = self._ml_interface.headers()
                                 case _:
                                     rprint(f'[red]Erro: Corpo JSON inválido ou outro erro [{_res.status_code}].[/red]')
