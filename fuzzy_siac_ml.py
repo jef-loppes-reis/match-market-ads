@@ -2,7 +2,7 @@
 import re
 from os import path, mkdir, makedirs, listdir
 from concurrent.futures import ProcessPoolExecutor
-from json import loads, dumps
+from json import dumps
 
 import bs4
 from pandas import DataFrame, Series, read_feather, concat
@@ -212,24 +212,25 @@ class Main:
         # Ordenar os dados
         df = df.sort_values(
             by=[
-                'mpn_ml',
+                'mpn_fuzzy',
                 'lista_vendas',
                 'soma_fuzzy',
                 'lista_tag_mais_vendido',
-                'lista_tag_avaliacao'
+                'lista_tag_avaliacao',
+                'compat'
             ],
             ascending=[
                 True,
-                False,
-                False,
-                False,
-                False
+                True,
+                True,
+                True,
+                True,
+                True
             ]
         ).copy()
 
         # Selecionar o melhor por 'mpn_ml'
-        # top_results = df.groupby('mpn_ml', as_index=False).first()
-        top_results = DataFrame(df.groupby('mpn_ml', as_index=False))
+        top_results = df.groupby('mpn_ml', as_index=False).first()
 
         return top_results
 
@@ -269,18 +270,21 @@ if __name__ == "__main__":
     if not path.exists(path.join(PATH_HERE, 'temp')):
         mkdir(path.join(PATH_HERE, 'temp'))
 
-    MARCA = 'GAUSS'
-    NOME_LOJA = 'gauss'
+    MARCA: str = input('Digite o nome da marca SIAC (como esta no SIAC): ').upper()
+    NOME_LOJA: str = input('Digite o nome da loja oficial: ').lower()
+
+    # MARCA = 'GAUSS'
+    # NOME_LOJA = 'gauss'
 
     grupos = GetFuzzyGrupos(marca=MARCA)
     main = Main(nome_loja=NOME_LOJA)
 
     for grupo in tqdm(
-        grupos.main()['grupo_subgrupo'][11:],
+        grupos.main()['grupo_subgrupo'][25:],
         desc=f'Grupos da {MARCA}:',
         colour='yellow'
     ):
-        rprint(f'\n\t[yellow]{grupo}[/yellow]')
+        rprint(f'\n[yellow]Trabalhando com o grupo[/yellow] [cyan]{grupo}[/cyan]')
         grupo_normalizado = sub(r'\s', '+', grupo.lower())
 
         main.reset_df_infos()
@@ -293,4 +297,3 @@ if __name__ == "__main__":
         main.juntar_resultados(marca=NOME_LOJA).to_excel(
             f'./total_produtos_{NOME_LOJA.lower()}.xlsx'
         )
-    # main.juntar_resultados(marca=NOME_LOJA)
