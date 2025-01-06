@@ -40,8 +40,8 @@ def get_number_photo(lista_name_photo: str) -> list[str]:
 ML_INTERFACE: MLInterface = MLInterface(1)
 HEADERS: dict = ML_INTERFACE.headers()
 CAMINHO_FOTOS: str = '../photo_validation/out_files_photos/%s'
-NOME_LOJA: str = 'takao'
-PATH_LOJA: str = f'./out/{NOME_LOJA}'
+FABRICANTE: str = 'indisa'
+PATH_LOJA: str = f'./out/{FABRICANTE}'
 
 if not path.exists(PATH_LOJA):
     mkdir(PATH_LOJA)
@@ -49,15 +49,14 @@ if not path.exists(PATH_LOJA):
 with open('./data/sale_terms.json', 'r', encoding='utf-8') as fp:
     sale_terms: dict = load(fp)
 
-df_photos: DataFrame = read_feather(
-    f'../temp/conferencia_fotos_{NOME_LOJA}.feather')
-df_photos: DataFrame = df_photos.query('~mlb.isna()').reset_index(drop=True).copy()
+df_photos: DataFrame = read_feather(f'../photo_validation/out_files_dataframe/{FABRICANTE}/conferencia_fotos_{FABRICANTE}.feather')
+# df_photos: DataFrame = df_photos.query('~mlb.isna()').reset_index(drop=True).copy()
 df_photos['number_photo'] = None
 df_photos.loc[:, 'number_photo'] = get_number_photo(
     df_photos.path_file_photo.fillna('0'))
 
 df_clona_genuino = read_excel(
-    f'../data/planilhas_primeiro_processo/{NOME_LOJA}.xlsx', dtype=str)
+    f'../data/planilhas_primeiro_processo/{FABRICANTE}.xlsx', dtype=str)
 df_clona_genuino = df_clona_genuino.set_axis(
     df_clona_genuino.columns.str.lower(), axis=1).copy()
 df_clona_genuino.loc[:, 'sku_certo'] = list(
@@ -106,7 +105,7 @@ df_clonados: DataFrame = DataFrame(
 
 try:
     df_ultima_clonagem: DataFrame = read_csv(
-        f'./out/{NOME_LOJA}/df_clonados_{NOME_LOJA}.csv')
+        f'./out/{FABRICANTE}/df_clonados_{FABRICANTE}.csv')
     df_clona_copy = df_clona_copy[
         ~df_clona_copy['mlb'].isin(df_ultima_clonagem['item_id_genuino'])]
 except FileNotFoundError:
@@ -150,7 +149,7 @@ for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'
 
     clonagem.gerar_payload_cadastro(
         list_path_img=[
-            CAMINHO_FOTOS % f'{NOME_LOJA}/{name_photo}' for name_photo in row['path_file_photo']],
+            CAMINHO_FOTOS % f'{FABRICANTE}/{name_photo}' for name_photo in row['path_file_photo']],
         sku=sku
     )
 
@@ -204,4 +203,4 @@ for mlb in tqdm(df_clona_copy.mlb.unique(), desc='Anunciando...:', colour='blue'
         'descricao': retorno_descricao.status_code
     }
 
-    df_clonados.to_csv(f'./out/{NOME_LOJA}/df_clonados_{NOME_LOJA}.csv', index=False)
+    df_clonados.to_csv(f'./out/{FABRICANTE}/df_clonados_{FABRICANTE}.csv', index=False)

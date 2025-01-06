@@ -10,6 +10,7 @@ __pycache__/
 *.xlsx
 *.jpg
 *.ipynb
+*.feather
 
 # C extensions
 *.so

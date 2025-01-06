@@ -75,26 +75,59 @@ class Clonador:
 
     def mlb_infos(self, item_id_ml: str) -> tuple[Response, Response]:
         with Client(base_url=self._base_url) as client:
-            self._res_mlb: Response = client.get(
-                url=f'/{item_id_ml}?include_attributes=all',
-                headers=self._headers,
-                timeout=None
-            )
-            self._res_descp: Response = client.get(
-                url=f'/{item_id_ml}/description',
-                headers=self._headers,
-                timeout=None
-            )
-        return (self._res_mlb, self._res_descp)
 
-    def read_product_siac(self) -> DataFrame:
+            for __attempts_mlb in range(10):
+                self._res_mlb: Response = client.get(
+                    url=f'/{item_id_ml}?include_attributes=all',
+                    headers=self._headers,
+                    timeout=None
+                )
+                if self._res_mlb.is_success:
+                    __flag_mlb: bool = True
+                if self._res_mlb.is_client_error:
+                    if self._res_mlb.status_code == 429:
+                        sleep(10)
+                        continue
+                    raise ValueError(f'Erro de requisicao do MLB {item_id_ml}')
+                if self._res_mlb.is_server_error:
+                    sleep(20)
+                    continue
+
+            for __attempts_desc in range(10):
+                self._res_descp: Response = client.get(
+                    url=f'/{item_id_ml}/description',
+                    headers=self._headers,
+                    timeout=None
+                )
+
+                if self._res_descp.is_success:
+                    __flag_desc: bool = True
+                if self._res_descp.is_client_error:
+                    if self._res_descp.status_code == 429:
+                        sleep(10)
+                        continue
+                    raise ValueError(f'Erro de requisicao do MLB {item_id_ml}')
+                if self._res_descp.is_server_error:
+                    sleep(20)
+                    continue
+
+            if self._res_mlb.is_success and self._res_descp.is_success:
+                rprint(self._res_mlb.json())
+                rprint(self._res_descp.json())
+                return (self._res_mlb, self._res_descp)
+            raise ValueError(f'Numero de tentativas exedido: [MLB]: {self._res_mlb.status_code}, [DESC]: {self._res_descp.status_code}')
+
+    def __read_product_siac(self) -> DataFrame:
         with Postgres() as db:
             with open('./data/d_1_produto.sql', 'r', encoding='utf-8') as fp:
                 self.df_siac = db.query(fp.read()).copy()
 
     def read_df_siac_filter(self, codpro_produto: str):
-        self.df_siac_filter: DataFrame = self.df_siac.query(
-            f'codpro == "{codpro_produto}"').reset_index(drop=True).copy()
+        codpro_produto: str = codpro_produto[0] if isinstance(codpro_produto, list) else codpro_produto
+        self.df_siac_filter: DataFrame = (self.df_siac
+            .query(f'codpro == "{codpro_produto}"')
+            .reset_index(drop=True).copy()
+        )
 
     def lista_attributos(self, sku: str) -> list[dict[str, str | float]]:
         _lista_att: list[dict[str, str | float]] = []
@@ -221,8 +254,8 @@ class Clonador:
         except Exception as e:
             rprint(e)
 
-    def gerar_payload_cadastro(self, list_path_img: list[str], sku: str):
-        rprint(self.df_siac_filter)
+    def gerar_payload_cadastro(self, list_path_img: list[str], sku: str, mlb: str):
+        self.mlb_infos(mlb)
         for key, _ in self.corpo_clonagem.items():
             match key:
                 case 'title':
@@ -277,7 +310,7 @@ class Clonador:
                         {key: self.lista_attributos(sku)}
                     )
 
-    def descricao(self, item_id_novo: str, descricao: str) -> Response:
+    def post_descricao(self, item_id_novo: str, descricao: str) -> Response:
         with Client(base_url=self._base_url) as client:
             while True:
                 if self.__num_tentativas < 16:
@@ -293,7 +326,7 @@ class Clonador:
                     self.__num_tentativas = 0
                     return _res_descricao
 
-    def cadastro(self) -> dict:
+    def post_cadastro(self) -> dict:
         with Client() as client:
             while True:
                 if self.__num_tentativas < 16:
@@ -326,4 +359,4 @@ class Clonador:
 
 
     def main(self):
-        self.read_product_siac()
+        self.__read_product_siac()

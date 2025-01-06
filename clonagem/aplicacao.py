@@ -104,7 +104,15 @@ if __name__ == '__main__':
     apl = Aplicacao()
     apl.read_apl()
     apl.criar_ano_inicial_ano_final()
-    rprint(apl._df_aplic)
-    rprint(apl._df_aplic_orig)
-    rprint(apl.cria_lista_de_numeros_originais('ZM996'))
+    desc: str = apl.criar_descricao(
+        codpro='077456',
+        kit=False,
+        titulo='BARRA LIMPADOR FIAT STILO 2002/2011 LD',
+        marca='GRANERO',
+        num_fab='GR350D',
+        oems=apl.lista_originais(original='GR350D'),
+        aplicacao_veiculos=apl.get_aplicacao(original='GR350D'),
+        multiplo_venda=1
+    )
+    rprint(desc)
 

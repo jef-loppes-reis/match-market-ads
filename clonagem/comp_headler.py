@@ -7,6 +7,7 @@ from rich import print as rprint
 
 
 class CompatibilidadeHandler:
+
     def __init__(self, base_url: str, headers: dict):
         self._base_url: str = base_url
         self._headers: dict = headers
@@ -56,7 +57,7 @@ class CompatibilidadeHandler:
 
     def post_compatibilidades(self,
                               payload: dict,
-                              http_client: Client, 
+                              http_client: Client,
                               item_id_novo: str) -> Tuple[int, Response]:
         """
         post_compatibilidades Função fictícia que posta compatibilidades
@@ -77,7 +78,7 @@ class CompatibilidadeHandler:
 
     def compatibilidades(self,
                          item_id_ml_clone: str,
-                         item_id_novo: str) -> Union[int, Dict]:
+                         item_id_novo: str) -> dict[Response, dict, list]:
         """
         compatibilidades Obtém compatibilidades de um item e posta essas compatibilidades para um novo item.
 
@@ -115,8 +116,24 @@ class CompatibilidadeHandler:
 
             # Trata diferentes cenários de resposta
             status_code, response = created_compatibilities_count
-            if status_code == 200:
-                return response.json().get('created_compatibilities_count')
-            if status_code == 400:
-                return response, {'products': _lista_aplicacoes}
-            return created_compatibilities_count
+            if status_code in range(200, 300):
+                return {
+                    'res': response,
+                    'res_json': response.json(),
+                    'products': []
+                }
+                # return response.status_code, response.json()
+                # return response.json().get('created_compatibilities_count')
+            if status_code == range(400, 500):
+                return {
+                    'res': response,
+                    'res_json': response.json(),
+                    'products': _lista_aplicacoes
+                }
+                # return response, {'products': _lista_aplicacoes}
+            return {
+                'res': response,
+                'res_json': response.json(),
+                'products': _lista_aplicacoes
+            }
+            # return created_compatibilities_count
